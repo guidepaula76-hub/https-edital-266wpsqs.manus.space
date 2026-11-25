@@ -197,6 +197,21 @@ export default defineConfig({
       "localhost",
       "127.0.0.1",
     ],
+    watch: {
+      followSymlinks: false,
+      ignored: (file) => {
+        const resolvedFile = path.resolve(file);
+        const insideProject = resolvedFile === PROJECT_ROOT || resolvedFile.startsWith(`${PROJECT_ROOT}${path.sep}`);
+        const ignoredRoots = [
+          path.join(PROJECT_ROOT, "node_modules"),
+          path.join(PROJECT_ROOT, ".git"),
+          "/run",
+          "/proc",
+          "/sys",
+        ];
+        return !insideProject || ignoredRoots.some(root => resolvedFile === root || resolvedFile.startsWith(`${root}${path.sep}`));
+      },
+    },
     fs: {
       strict: true,
       // Setting deny replaces Vite's defaults, so they are repeated here first. Then dotfiles, and the
