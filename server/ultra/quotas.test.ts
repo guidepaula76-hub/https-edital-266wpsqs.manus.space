@@ -13,6 +13,9 @@ describe("daily Free question quota", () => {
     expect(canGenerateQuestionBatch(7)).toBe(true);
     expect(canGenerateQuestionBatch(8)).toBe(false);
     expect(canGenerateQuestionBatch(9)).toBe(false);
+    expect(canGenerateQuestionBatch(9, 1)).toBe(true);
+    expect(canGenerateQuestionBatch(8, 2)).toBe(true);
+    expect(canGenerateQuestionBatch(8, 3)).toBe(false);
     expect(FREE_DAILY_NEW_QUESTION_LIMIT).toBe(10);
     expect(NEW_QUESTION_BATCH_SIZE).toBe(3);
   });
