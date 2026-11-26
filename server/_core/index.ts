@@ -8,6 +8,7 @@ import { publicPlatformScript } from "./publicConfig";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { registerStudyRoutes } from "../ultra/routes";
 
 async function startServer() {
   const app = express();
@@ -22,6 +23,7 @@ async function startServer() {
   });
   app.use("/api/auth", createAuthRouter());
   registerOAuthRoutes(app);
+  registerStudyRoutes(app);
   // tRPC API
   app.use(
     "/api/trpc",
