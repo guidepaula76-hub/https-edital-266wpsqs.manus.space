@@ -39,3 +39,15 @@ jobs:
         run: pnpm test
       - name: Gerar build
         run: pnpm build
+      - name: Gerar prévia da migração (sem conectar ao banco)
+        env:
+          DATABASE_URL: mysql://preview:preview@127.0.0.1:3306/preview
+        run: pnpm exec drizzle-kit generate --name study_tables
+      - name: Guardar arquivos da migração para revisão
+        uses: actions/upload-artifact@v4
+        with:
+          name: drizzle-study-migration-preview
+          path: |
+            drizzle/*.sql
+            drizzle/meta/*.json
+          if-no-files-found: error
