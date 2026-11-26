@@ -25,3 +25,10 @@ export function canGenerateQuestionBatch(
     && dailyLimit >= 0
     && alreadyGenerated + batchSize <= dailyLimit;
 }
+/** Confirms the persisted batch matches the dynamically selected batch size. */
+export function hasExpectedQuestionCount(actualCount: number, expectedCount: number): boolean {
+  return Number.isSafeInteger(actualCount)
+    && Number.isSafeInteger(expectedCount)
+    && expectedCount > 0
+    && actualCount === expectedCount;
+}
