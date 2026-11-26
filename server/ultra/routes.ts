@@ -1,4 +1,5 @@
-import { asc, and, desc, eq, inArray, isNull } from "drizzle-orm";
+import { createHash, randomUUID } from "node:crypto";
+import { asc, and, desc, eq, inArray, isNull, lt, or } from "drizzle-orm";
 import { Router, type Express, type Response } from "express";
 import { z } from "zod";
 import pdfParse from "pdf-parse";
@@ -10,12 +11,13 @@ import {
   studyGoals,
   studyNodes,
   studyPreferences,
+  studyQuestionRewards,
   studyQuestions,
 } from "../../drizzle/schema";
-import { goalInputSchema, type ErrorEntry, type Goal, type StudyAnswer, type StudySnapshot, type TrailNode, type Syllabus } from "../../shared/ultra";
+import { goalInputSchema, type ErrorEntry, type Goal, type StudyAnswer, type StudyQuestion, type StudySnapshot, type TrailNode, type Syllabus } from "../../shared/ultra";
 import { getDb } from "../db";
 import { requireMutation, requireSession, type UltraRequest } from "./auth";
-import { verticalizeSyllabus } from "./ai";
+import { generateNodeQuestions, verticalizeSyllabus } from "./ai";
 
 const textVerticalizationSchema = z.object({
   text: z.string().trim().min(20).max(120000),
@@ -203,6 +205,26 @@ async function loadSnapshot(userId: number): Promise<StudySnapshot> {
   };
 }
 
+function publicQuestion(row: typeof studyQuestions.$inferSelect): StudyQuestion {
+  return {
+    id: row.id,
+    nodeId: row.nodeId,
+    subject: row.subject,
+    topic: row.topic,
+    board: row.board,
+    format: row.format,
+    level: row.level === 2 ? 2 : 1,
+    difficulty: row.difficulty,
+    prompt: row.prompt,
+    choices: row.choices,
+    source: row.source,
+  };
+}
+
+function promptHash(prompt: string): string {
+  return createHash("sha256").update(prompt.trim().toLocaleLowerCase("pt-BR")).digest("hex");
+}
+
 function sendStudyError(res: Response, error: unknown) {
   if (error instanceof Error && error.message === "DATABASE_UNAVAILABLE") {
     res.status(503).json({ error: "O banco de dados ainda não está disponível.", code: "DATABASE_UNAVAILABLE" });
@@ -354,6 +376,169 @@ export function createStudyRouter() {
         res.status(404).json({ error: "O documento do edital não pertence a esta conta.", code: "DOCUMENT_NOT_FOUND" });
         return;
       }
+      sendStudyError(res, error);
+    }
+  });
+
+  router.get("/nodes/:id/questions", requireSession, async (req, res) => {
+    const nodeId = Number(req.params.id);
+    if (!Number.isSafeInteger(nodeId) || nodeId < 1) {
+      res.status(400).json({ error: "Nó de estudo inválido.", code: "INVALID_NODE" });
+      return;
+    }
+    try {
+      const userId = userIdFrom(req as UltraRequest);
+      const snapshot = await loadSnapshot(userId);
+      const node = snapshot.nodes.find(item => item.id === nodeId);
+      if (!node) {
+        res.status(404).json({ error: "Nó não encontrado na sua meta ativa.", code: "NODE_NOT_FOUND" });
+        return;
+      }
+      if (!node.unlocked) {
+        res.status(403).json({ error: "Conclua as etapas anteriores para liberar este nó.", code: "NODE_LOCKED" });
+        return;
+      }
+      const db = await getDb();
+      if (!db || !snapshot.goal) throw new Error("DATABASE_UNAVAILABLE");
+      const rows = await db.select().from(studyQuestions)
+        .where(and(
+          eq(studyQuestions.userId, userId),
+          eq(studyQuestions.goalId, snapshot.goal.id),
+          eq(studyQuestions.nodeId, nodeId),
+        ))
+        .orderBy(asc(studyQuestions.createdAt), asc(studyQuestions.id));
+      res.json({ node, questions: rows.map(publicQuestion) });
+    } catch (error) {
+      sendStudyError(res, error);
+    }
+  });
+
+  router.post("/nodes/:id/generate", requireMutation, async (req, res) => {
+    const nodeId = Number(req.params.id);
+    if (!Number.isSafeInteger(nodeId) || nodeId < 1) {
+      res.status(400).json({ error: "Nó de estudo inválido.", code: "INVALID_NODE" });
+      return;
+    }
+    const generationId = randomUUID();
+    const now = new Date();
+    try {
+      const userId = userIdFrom(req as UltraRequest);
+      const snapshot = await loadSnapshot(userId);
+      const node = snapshot.nodes.find(item => item.id === nodeId);
+      if (!node) {
+        res.status(404).json({ error: "Nó não encontrado na sua meta ativa.", code: "NODE_NOT_FOUND" });
+        return;
+      }
+      if (!node.unlocked) {
+        res.status(403).json({ error: "Conclua as etapas anteriores para liberar este nó.", code: "NODE_LOCKED" });
+        return;
+      }
+      const db = await getDb();
+      if (!db || !snapshot.goal) throw new Error("DATABASE_UNAVAILABLE");
+      const lockResult = await db.update(studyNodes).set({
+        generationLockId: generationId,
+        generationLockExpiresAt: new Date(now.getTime() + 3 * 60 * 1000),
+      }).where(and(
+        eq(studyNodes.id, nodeId),
+        eq(studyNodes.userId, userId),
+        or(isNull(studyNodes.generationLockExpiresAt), lt(studyNodes.generationLockExpiresAt, now)),
+      ));
+      const affectedRows = Number((lockResult as unknown as [{ affectedRows?: number }])[0]?.affectedRows ?? 0);
+      if (affectedRows < 1) {
+        res.status(409).json({ error: "Já existe uma geração de questões em andamento para este tópico. Aguarde um instante.", code: "GENERATION_IN_PROGRESS" });
+        return;
+      }
+      try {
+        const generated = await generateNodeQuestions({
+          subject: node.subject,
+          topic: node.topic,
+          board: snapshot.goal.banca,
+          format: snapshot.goal.format,
+          level: node.level,
+        });
+        const existingRows = await db.select({ promptHash: studyQuestions.promptHash }).from(studyQuestions)
+          .where(and(eq(studyQuestions.userId, userId), eq(studyQuestions.nodeId, nodeId)));
+        const existingHashes = new Set(existingRows.map(row => row.promptHash));
+        const unique = generated.filter(question => {
+          const hash = promptHash(question.prompt);
+          if (existingHashes.has(hash)) return false;
+          existingHashes.add(hash);
+          return true;
+        });
+        if (unique.length !== 3) {
+          res.status(409).json({ error: "A IA repetiu uma questão já existente. Tente gerar novamente em instantes.", code: "DUPLICATE_QUESTIONS" });
+          return;
+        }
+        const insertRows = unique.map(question => ({
+          userId,
+          goalId: snapshot.goal!.id,
+          nodeId,
+          subject: node.subject,
+          topic: node.topic,
+          board: snapshot.goal!.banca,
+          format: snapshot.goal!.format,
+          level: node.level,
+          difficulty: question.difficulty,
+          prompt: question.prompt,
+          promptHash: promptHash(question.prompt),
+          choices: question.choices,
+          correctAnswer: question.correctAnswer,
+          explanation: question.explanation,
+          trap: question.trap,
+          rationales: question.rationales,
+          source: "ai" as const,
+          generationId,
+        }));
+        const inserted = await db.insert(studyQuestions).values(insertRows).$returningId();
+        if (inserted.length !== 3) throw new Error("QUESTION_SAVE_FAILED");
+        const rows = await db.select().from(studyQuestions)
+          .where(and(eq(studyQuestions.userId, userId), eq(studyQuestions.generationId, generationId)))
+          .orderBy(asc(studyQuestions.id));
+        const updatedNode = { ...node, questionCount: node.questionCount + rows.length };
+        res.status(201).json({
+          node: updatedNode,
+          questions: rows.map(publicQuestion),
+          notice: "Questões geradas por IA, não oficiais. Confira a legislação e o edital vigentes.",
+        });
+      } finally {
+        await db.update(studyNodes).set({
+          generationLockId: null,
+          generationLockExpiresAt: null,
+        }).where(and(eq(studyNodes.id, nodeId), eq(studyNodes.userId, userId), eq(studyNodes.generationLockId, generationId)));
+      }
+    } catch (error) {
+      sendStudyError(res, error);
+    }
+  });
+
+  router.get("/questions/:id", requireSession, async (req, res) => {
+    const questionId = Number(req.params.id);
+    if (!Number.isSafeInteger(questionId) || questionId < 1) {
+      res.status(400).json({ error: "Questão inválida.", code: "INVALID_QUESTION" });
+      return;
+    }
+    try {
+      const userId = userIdFrom(req as UltraRequest);
+      const db = await getDb();
+      if (!db) throw new Error("DATABASE_UNAVAILABLE");
+      const rows = await db.select().from(studyQuestions)
+        .where(and(eq(studyQuestions.id, questionId), eq(studyQuestions.userId, userId))).limit(1);
+      const question = rows[0];
+      if (!question) {
+        res.status(404).json({ error: "Questão não encontrada.", code: "QUESTION_NOT_FOUND" });
+        return;
+      }
+      const [preferenceRows, errorRows] = await Promise.all([
+        db.select({ activeGoalId: studyPreferences.activeGoalId }).from(studyPreferences).where(eq(studyPreferences.userId, userId)).limit(1),
+        db.select({ id: studyErrorEntries.id }).from(studyErrorEntries)
+          .where(and(eq(studyErrorEntries.userId, userId), eq(studyErrorEntries.questionId, questionId))).limit(1),
+      ]);
+      if (preferenceRows[0]?.activeGoalId !== question.goalId && !errorRows[0]) {
+        res.status(404).json({ error: "Questão não encontrada na sua jornada ativa.", code: "QUESTION_NOT_FOUND" });
+        return;
+      }
+      res.json(publicQuestion(question));
+    } catch (error) {
       sendStudyError(res, error);
     }
   });
