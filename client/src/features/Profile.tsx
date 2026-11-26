@@ -37,6 +37,8 @@ export default function Profile() {
   const [edit, setEdit] = useState(false);
   const [name, setName] = useState(state.profile.name);
   const complete = state.completedNodes.length;
+  const totalNodes = state.nodes.length;
+  const trailProgress = totalNodes ? Math.round((complete / totalNodes) * 100) : 0;
   return (
     <>
       <SectionHeading
@@ -113,9 +115,9 @@ export default function Profile() {
             </p>
             <div className="row-between">
               <span>Progresso da trilha</span>
-              <strong>{Math.round((complete / 12) * 100)}%</strong>
+              <strong>{trailProgress}%</strong>
             </div>
-            <ProgressBar value={(complete / 12) * 100} color="purple" />
+            <ProgressBar value={trailProgress} color="purple" />
             <div className="goal-details">
               <span>
                 <CalendarDays size={14} />{" "}
