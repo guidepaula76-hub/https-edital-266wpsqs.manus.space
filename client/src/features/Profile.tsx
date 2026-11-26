@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import {
-  UserRound,
   Pencil,
   Flame,
   Gem,
@@ -11,8 +10,6 @@ import {
   VolumeX,
   ArrowRight,
   CalendarDays,
-  LogOut,
-  RotateCcw,
   Check,
   ShieldCheck,
   BookX,
