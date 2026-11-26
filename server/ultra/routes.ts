@@ -20,6 +20,7 @@ import { getDb } from "../db";
 import { requireMutation, requireSession, type UltraRequest } from "./auth";
 import { generateNodeQuestions, verticalizeSyllabus } from "./ai";
 import { canGenerateQuestionBatch, FREE_DAILY_NEW_QUESTION_LIMIT, getSaoPauloDayKey, NEW_QUESTION_BATCH_SIZE } from "./quotas";
+import { storageGetSignedUrl, storagePut } from "../storage";
 
 const textVerticalizationSchema = z.object({
   text: z.string().trim().min(20).max(120000),
@@ -41,6 +42,7 @@ async function saveVerticalizedDocument(input: {
   concurso: string;
   cargo: string;
   sizeBytes: number;
+  fileBuffer?: Buffer;
 }): Promise<Syllabus & { documentId: number; source: "text" | "pdf" }> {
   const syllabus = await verticalizeSyllabus({
     text: input.text,
@@ -49,12 +51,16 @@ async function saveVerticalizedDocument(input: {
   });
   const db = await getDb();
   if (!db) throw new Error("DATABASE_UNAVAILABLE");
+  const storedFile = input.source === "pdf"
+    ? await storagePut(`ultra-study-documents/${input.userId}/${randomUUID()}.pdf`, input.fileBuffer ?? Buffer.alloc(0), "application/pdf")
+    : null;
+  if (input.source === "pdf" && !input.fileBuffer?.length) throw new Error("PDF_FILE_MISSING");
   const inserted = await db.insert(studyDocuments).values({
     userId: input.userId,
     name: input.name,
     source: input.source,
     rawText: input.text,
-    storageKey: null,
+    storageKey: storedFile?.key ?? null,
     sizeBytes: input.sizeBytes,
   }).$returningId();
   const documentId = inserted[0]?.id;
@@ -295,6 +301,7 @@ export function createStudyRouter() {
         concurso: parsed.data.concurso,
         cargo: parsed.data.cargo,
         sizeBytes: buffer.length,
+        fileBuffer: buffer,
       });
       res.json(result);
     } catch (error) {
@@ -302,6 +309,37 @@ export function createStudyRouter() {
         res.status(422).json({ error: "Não foi possível ler este PDF. Tente outro arquivo ou cole o texto do edital.", code: "PDF_PARSE_FAILED" });
         return;
       }
+      sendStudyError(res, error);
+    }
+  });
+
+  router.get("/documents/:id/download", requireSession, async (req, res) => {
+    const documentId = Number(req.params.id);
+    if (!Number.isSafeInteger(documentId) || documentId < 1) {
+      res.status(400).json({ error: "Documento inválido.", code: "INVALID_DOCUMENT" });
+      return;
+    }
+    try {
+      const db = await getDb();
+      if (!db) throw new Error("DATABASE_UNAVAILABLE");
+      const userId = userIdFrom(req as UltraRequest);
+      const rows = await db.select().from(studyDocuments)
+        .where(and(eq(studyDocuments.id, documentId), eq(studyDocuments.userId, userId)))
+        .limit(1);
+      const document = rows[0];
+      if (!document || document.source !== "pdf" || !document.storageKey) {
+        res.status(404).json({ error: "PDF não encontrado nesta conta.", code: "DOCUMENT_NOT_FOUND" });
+        return;
+      }
+      const signedUrl = await storageGetSignedUrl(document.storageKey);
+      const target = new URL(signedUrl);
+      if (target.protocol !== "https:") {
+        res.status(502).json({ error: "O armazenamento retornou um endereço inválido.", code: "STORAGE_URL_INVALID" });
+        return;
+      }
+      res.setHeader("Cache-Control", "no-store");
+      res.redirect(302, signedUrl);
+    } catch (error) {
       sendStudyError(res, error);
     }
   });
