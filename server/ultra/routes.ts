@@ -52,9 +52,14 @@ async function saveVerticalizedDocument(input: {
   const db = await getDb();
   if (!db) throw new Error("DATABASE_UNAVAILABLE");
   if (input.source === "pdf" && !input.fileBuffer?.length) throw new Error("PDF_FILE_MISSING");
-  const storedFile = input.source === "pdf"
-    ? await storagePut(`ultra-study-documents/${input.userId}/${randomUUID()}.pdf`, input.fileBuffer!, "application/pdf")
-    : null;
+  let storedFile: { key: string; url: string } | null = null;
+  if (input.source === "pdf") {
+    try {
+      storedFile = await storagePut(`ultra-study-documents/${input.userId}/${randomUUID()}.pdf`, input.fileBuffer!, "application/pdf");
+    } catch {
+      throw new Error("STORAGE_UNAVAILABLE");
+    }
+  }
   const inserted = await db.insert(studyDocuments).values({
     userId: input.userId,
     name: input.name,
@@ -234,6 +239,10 @@ function promptHash(prompt: string): string {
 }
 
 function sendStudyError(res: Response, error: unknown) {
+  if (error instanceof Error && error.message === "STORAGE_UNAVAILABLE") {
+    res.status(503).json({ error: "O armazenamento privado de PDFs está indisponível. Tente novamente mais tarde.", code: "STORAGE_UNAVAILABLE" });
+    return;
+  }
   if (error instanceof Error && error.message === "DATABASE_UNAVAILABLE") {
     res.status(503).json({ error: "O banco de dados ainda não está disponível.", code: "DATABASE_UNAVAILABLE" });
     return;
@@ -331,7 +340,12 @@ export function createStudyRouter() {
         res.status(404).json({ error: "PDF não encontrado nesta conta.", code: "DOCUMENT_NOT_FOUND" });
         return;
       }
-      const signedUrl = await storageGetSignedUrl(document.storageKey);
+      let signedUrl: string;
+      try {
+        signedUrl = await storageGetSignedUrl(document.storageKey);
+      } catch {
+        throw new Error("STORAGE_UNAVAILABLE");
+      }
       const target = new URL(signedUrl);
       if (target.protocol !== "https:") {
         res.status(502).json({ error: "O armazenamento retornou um endereço inválido.", code: "STORAGE_URL_INVALID" });
