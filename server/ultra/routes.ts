@@ -458,7 +458,7 @@ export function createStudyRouter() {
           .where(and(eq(studyDailyUsage.userId, userId), eq(studyDailyUsage.day, today)))
           .limit(1);
         const usedBeforeGeneration = currentUsage[0]?.questionGenerations ?? 0;
-        if (!canGenerateQuestionBatch(usedBeforeGeneration)) {
+        if (usedBeforeGeneration >= FREE_DAILY_NEW_QUESTION_LIMIT) {
           res.status(429).json({
             error: "Você atingiu o limite gratuito de 10 questões novas hoje. As revisões continuam liberadas.",
             code: "DAILY_QUESTION_LIMIT",
@@ -466,12 +466,14 @@ export function createStudyRouter() {
           });
           return;
         }
+        const batchSize = Math.min(NEW_QUESTION_BATCH_SIZE, FREE_DAILY_NEW_QUESTION_LIMIT - usedBeforeGeneration) as 1 | 2 | 3;
         const generated = await generateNodeQuestions({
           subject: node.subject,
           topic: node.topic,
           board: snapshot.goal.banca,
           format: snapshot.goal.format,
           level: node.level,
+          questionCount: batchSize,
         });
         const existingRows = await db.select({ promptHash: studyQuestions.promptHash }).from(studyQuestions)
           .where(and(eq(studyQuestions.userId, userId), eq(studyQuestions.nodeId, nodeId)));
@@ -482,7 +484,7 @@ export function createStudyRouter() {
           existingHashes.add(hash);
           return true;
         });
-        if (unique.length !== 3) {
+        if (unique.length !== batchSize) {
           res.status(409).json({ error: "A IA repetiu uma questão já existente. Tente gerar novamente em instantes.", code: "DUPLICATE_QUESTIONS" });
           return;
         }
@@ -520,9 +522,9 @@ export function createStudyRouter() {
             .limit(1)
             .for("update");
           const used = usageRows[0]?.questionGenerations ?? 0;
-          if (!canGenerateQuestionBatch(used)) return { allowed: false, used, inserted: [] as Array<{ id: number }> };
+          if (!canGenerateQuestionBatch(used, batchSize)) return { allowed: false, used, inserted: [] as Array<{ id: number }> };
           const inserted = await tx.insert(studyQuestions).values(insertRows).$returningId();
-          if (inserted.length !== NEW_QUESTION_BATCH_SIZE) throw new Error("QUESTION_SAVE_FAILED");
+          if (inserted.length !== batchSize) throw new Error("QUESTION_SAVE_FAILED");
           await tx.update(studyDailyUsage).set({
             questionGenerations: used + insertRows.length,
           }).where(and(eq(studyDailyUsage.userId, userId), eq(studyDailyUsage.day, today)));
