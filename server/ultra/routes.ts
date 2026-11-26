@@ -648,6 +648,17 @@ export function createStudyRouter() {
       }).format(yesterdayDate);
 
       const feedback = await db.transaction(async tx => {
+        // Serializa as respostas desta conta. Isso evita que duas tentativas
+        // simultâneas leiam o mesmo XP/ofensiva e sobrescrevam uma à outra,
+        // além de tornar a verificação do requestId e da recompensa atômica
+        // em relação às demais respostas do mesmo usuário.
+        const lockedPreferenceRows = await tx.select().from(studyPreferences)
+          .where(eq(studyPreferences.userId, userId))
+          .limit(1)
+          .for("update");
+        const currentPreferences = lockedPreferenceRows[0];
+        if (!currentPreferences) throw new Error("PREFERENCES_NOT_FOUND");
+
         const retryRows = await tx.select().from(studyAnswers)
           .where(and(eq(studyAnswers.userId, userId), eq(studyAnswers.requestId, parsed.data.requestId)))
           .limit(1);
@@ -737,14 +748,14 @@ export function createStudyRouter() {
           ));
         }
 
-        const lastStudyDay = preferences.lastStudyDay ?? "";
+        const lastStudyDay = currentPreferences.lastStudyDay ?? "";
         const nextStreak = lastStudyDay === today
-          ? preferences.streak
+          ? currentPreferences.streak
           : lastStudyDay === yesterday
-            ? preferences.streak + 1
+            ? currentPreferences.streak + 1
             : 1;
         await tx.update(studyPreferences).set({
-          xp: preferences.xp + xpAwarded,
+          xp: currentPreferences.xp + xpAwarded,
           streak: nextStreak,
           lastStudyDay: today,
         }).where(eq(studyPreferences.userId, userId));
