@@ -818,6 +818,89 @@ export default function Questions() {
   if (nodeParam && /^\\d+$/.test(nodeParam)) return <NodeStudySession nodeId={Number(nodeParam)} />;
 
   if (isSimulation) {
+    return (
+      <main className="question-page">
+        <SectionHeading
+          eyebrow="SIMULADO"
+          title="Simulados oficiais ainda não estão conectados"
+          description="O antigo simulado usava questões fictícias de demonstração. Para não apresentar uma nota enganosa, ele foi desativado até que o banco real e o registro de provas sejam integrados."
+        />
+        <Card>
+          <Tag tone="muted">Em desenvolvimento</Tag>
+          <h2>Seu desempenho não será inventado</h2>
+          <p>Quando o simulado real estiver disponível, as questões, o cronômetro, as respostas e o resultado serão vinculados à sua conta.</p>
+          <MechButton color="green" onClick={() => navigate("/app/trilha")}>Estudar pela trilha <ArrowRight size={16} /></MechButton>
+        </Card>
+      </main>
+    );
+  }
+
+  if (lessonIndex !== null) {
+    return (
+      <main className="question-page">
+        <SectionHeading
+          eyebrow="SESSÃO DE QUESTÕES"
+          title="Use sua trilha personalizada"
+          description="A sessão antiga por matéria usava questões fictícias e foi desativada. Agora, as sessões reais são abertas pelos tópicos da sua trilha."
+        />
+        <Card>
+          <Tag tone="muted">Banco demonstrativo desativado</Tag>
+          <p>Abra um tópico liberado para gerar questões com IA, responder e registrar seu progresso na conta.</p>
+          <MechButton color="green" onClick={() => navigate("/app/trilha")}>Abrir minha trilha <ArrowRight size={16} /></MechButton>
+        </Card>
+      </main>
+    );
+  }
+
+  if (isErrorMode) {
+    return (
+      <main className="question-page">
+        <SectionHeading
+          eyebrow="CADERNO DE ERROS"
+          title="Não foi possível identificar a questão"
+          description="Abra a revisão diretamente pelo item do seu caderno de erros para carregar a questão salva na sua conta."
+        />
+        <MechButton color="white" onClick={() => navigate("/app/perfil")}>Voltar ao caderno de erros <ArrowRight size={16} /></MechButton>
+      </main>
+    );
+  }
+
+  return (
+    <main className="question-page questions-home-page">
+      <SectionHeading
+        eyebrow="SEU ESPAÇO DE ESTUDOS"
+        title="Questões e simulados"
+        description="As questões da trilha e suas revisões são registradas na sua conta. O banco livre e os simulados completos ainda estão em integração."
+      />
+      <div className="question-overview-grid">
+        <Card className="overview-stat">
+          <div className="overview-stat-icon stat-purple"><ListFilter size={17} /></div>
+          <div><strong>{state.answers.length}</strong><span>respostas registradas</span></div>
+        </Card>
+        <Card className="overview-stat">
+          <div className="overview-stat-icon stat-green"><Check size={17} /></div>
+          <div><strong>{state.nodes.filter(node => node.completed).length}</strong><span>etapas concluídas</span></div>
+        </Card>
+        <Card className="overview-stat">
+          <div className="overview-stat-icon stat-coral"><Sparkles size={17} /></div>
+          <div><strong>{state.errors.length}</strong><span>erros para revisar</span></div>
+        </Card>
+      </div>
+      <Card>
+        <Tag tone="green">Disponível agora</Tag>
+        <h2>Questões da sua trilha</h2>
+        <p>Escolha uma etapa liberada. Se ainda não houver questões, você poderá solicitar a geração de três questões com IA para aquele tópico.</p>
+        <MechButton color="green" onClick={() => navigate("/app/trilha")}>Ir para a trilha <ArrowRight size={16} /></MechButton>
+      </Card>
+      <Card>
+        <Tag tone="muted">Em desenvolvimento</Tag>
+        <h2>Banco livre e simulados</h2>
+        <p>Esses módulos só serão ativados quando usarem questões reais, gabaritos validados e salvamento no servidor. As antigas questões fictícias não entram no seu histórico nem na sua pontuação.</p>
+      </Card>
+    </main>
+  );
+
+  if (isSimulation) {
     if (simulationResults) {
       const correctCount = simulationResults.filter(
         row => row.result.correct
