@@ -85,6 +85,35 @@ describe("Ultra REST study authentication", () => {
     expect(await privateRead.json()).toEqual({ userId: auth.user.id });
   });
 
+  it("rejects cross-origin auth mutations even when the custom JSON header is present", async () => {
+    const base = await startApp();
+    const response = await fetch(`${base}/api/auth/signup`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Ultra-Request": "1",
+        Origin: "https://attacker.example",
+      },
+      body: JSON.stringify({ name: "Aluno Teste", email: "origin@test.local", password: "senha-segura-123" }),
+    });
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({ code: "REQUEST_REJECTED" });
+  });
+
+  it("accepts an explicit matching origin for auth mutations", async () => {
+    const base = await startApp();
+    const response = await fetch(`${base}/api/auth/signup`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Ultra-Request": "1",
+        Origin: base,
+      },
+      body: JSON.stringify({ name: "Aluno Teste", email: "same-origin@test.local", password: "senha-segura-123" }),
+    });
+    expect(response.status).toBe(201);
+  });
+
   it("requires same-origin JSON and the session CSRF token for mutations", async () => {
     const base = await startApp();
     const signup = await fetch(`${base}/api/auth/signup`, {
