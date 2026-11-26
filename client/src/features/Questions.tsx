@@ -228,10 +228,10 @@ export default function Questions() {
   const nodeId = query.get("node");
   const errorId = query.get("error");
 
-  if (errorId && /^\\d+$/.test(errorId)) {
+  if (errorId && /^\d+$/.test(errorId)) {
     return <ErrorReviewSession questionId={Number(errorId)} />;
   }
-  if (nodeId && /^\\d+$/.test(nodeId)) {
+  if (nodeId && /^\d+$/.test(nodeId)) {
     return <NodeStudySession nodeId={Number(nodeId)} />;
   }
 
