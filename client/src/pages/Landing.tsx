@@ -102,8 +102,8 @@ export default function Landing() {
               <MechButton onClick={() => navigate("/cadastro")}>
                 Começar Agora <ArrowRight size={18} />
               </MechButton>
-              <MechButton color="white" onClick={() => navigate("/app")}>
-                Explorar a plataforma
+              <MechButton color="white" onClick={() => navigate("/login")}>
+                Entrar na plataforma
               </MechButton>
             </div>
             <div className="hero-confidence">
