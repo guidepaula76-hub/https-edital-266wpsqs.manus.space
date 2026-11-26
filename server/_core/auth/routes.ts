@@ -48,6 +48,20 @@ function noStore(res: Response) {
 export function requestIsSameOrigin(req: Request): boolean {
   const fetchSite = req.get("Sec-Fetch-Site");
   if (fetchSite && fetchSite !== "same-origin" && fetchSite !== "none") return false;
+
+  // SameSite=None is required by the hosted preview iframe. When browsers send
+  // Origin, bind state-changing requests to the exact origin serving this app.
+  const origin = req.get("Origin");
+  if (origin) {
+    try {
+      const parsedOrigin = new URL(origin);
+      const requestOrigin = new URL(`${req.protocol}://${req.get("host")}`).origin;
+      if (parsedOrigin.origin !== origin || parsedOrigin.origin !== requestOrigin) return false;
+    } catch {
+      return false;
+    }
+  }
+
   return req.get("X-Ultra-Request") === "1" && Boolean(req.is("application/json"));
 }
 export function sendError(res: Response, status: number, error: string, code: string) {
