@@ -1,18 +1,62 @@
 import { asc, and, desc, eq, inArray, isNull } from "drizzle-orm";
 import { Router, type Express, type Response } from "express";
 import { z } from "zod";
+import pdfParse from "pdf-parse";
 import {
   studyAnswers,
   studyDisciplines,
+  studyDocuments,
   studyErrorEntries,
   studyGoals,
   studyNodes,
   studyPreferences,
   studyQuestions,
 } from "../../drizzle/schema";
-import type { ErrorEntry, Goal, StudyAnswer, StudySnapshot, TrailNode } from "../../shared/ultra";
+import { goalInputSchema, type ErrorEntry, type Goal, type StudyAnswer, type StudySnapshot, type TrailNode, type Syllabus } from "../../shared/ultra";
 import { getDb } from "../db";
 import { requireMutation, requireSession, type UltraRequest } from "./auth";
+import { verticalizeSyllabus } from "./ai";
+
+const textVerticalizationSchema = z.object({
+  text: z.string().trim().min(20).max(120000),
+  concurso: z.string().trim().min(2).max(180),
+  cargo: z.string().trim().min(2).max(180),
+}).strict();
+const pdfVerticalizationSchema = z.object({
+  name: z.string().trim().min(1).max(180),
+  base64: z.string().min(1).max(11200000).regex(/^[A-Za-z0-9+/]+={0,2}$/),
+  concurso: z.string().trim().min(2).max(180),
+  cargo: z.string().trim().min(2).max(180),
+}).strict();
+
+async function saveVerticalizedDocument(input: {
+  userId: number;
+  name: string;
+  source: "text" | "pdf";
+  text: string;
+  concurso: string;
+  cargo: string;
+  sizeBytes: number;
+}): Promise<Syllabus & { documentId: number; source: "text" | "pdf" }> {
+  const syllabus = await verticalizeSyllabus({
+    text: input.text,
+    concurso: input.concurso,
+    cargo: input.cargo,
+  });
+  const db = await getDb();
+  if (!db) throw new Error("DATABASE_UNAVAILABLE");
+  const inserted = await db.insert(studyDocuments).values({
+    userId: input.userId,
+    name: input.name,
+    source: input.source,
+    rawText: input.text,
+    storageKey: null,
+    sizeBytes: input.sizeBytes,
+  }).$returningId();
+  const documentId = inserted[0]?.id;
+  if (!documentId) throw new Error("DOCUMENT_SAVE_FAILED");
+  return { ...syllabus, documentId, source: input.source };
+}
 
 const preferencesSchema = z.object({
   sound: z.boolean().optional(),
@@ -170,6 +214,149 @@ function sendStudyError(res: Response, error: unknown) {
 
 export function createStudyRouter() {
   const router = Router();
+
+  router.post("/verticalize", requireMutation, async (req, res) => {
+    const parsed = textVerticalizationSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Informe o texto legível do edital, o concurso e o cargo.", code: "INVALID_INPUT" });
+      return;
+    }
+    try {
+      const result = await saveVerticalizedDocument({
+        userId: userIdFrom(req as UltraRequest),
+        name: "Edital colado",
+        source: "text",
+        text: parsed.data.text,
+        concurso: parsed.data.concurso,
+        cargo: parsed.data.cargo,
+        sizeBytes: Buffer.byteLength(parsed.data.text, "utf8"),
+      });
+      res.json(result);
+    } catch (error) {
+      if (error instanceof Error && error.message === "DOCUMENT_SAVE_FAILED") {
+        res.status(503).json({ error: "Não foi possível guardar o documento organizado.", code: "DOCUMENT_SAVE_FAILED" });
+        return;
+      }
+      sendStudyError(res, error);
+    }
+  });
+
+  router.post("/verticalize-pdf", requireMutation, async (req, res) => {
+    const parsed = pdfVerticalizationSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Envie um arquivo PDF válido, com até 8 MiB, e informe o concurso e o cargo.", code: "INVALID_INPUT" });
+      return;
+    }
+    try {
+      const buffer = Buffer.from(parsed.data.base64, "base64");
+      if (buffer.length === 0 || buffer.length > 8 * 1024 * 1024 || buffer.subarray(0, 5).toString("ascii") !== "%PDF-") {
+        res.status(400).json({ error: "O arquivo enviado não é um PDF válido ou ultrapassa 8 MiB.", code: "INVALID_PDF" });
+        return;
+      }
+      const extracted = await pdfParse(buffer);
+      const text = extracted.text.replace(/\u0000/g, "").trim();
+      if (text.length < 20) {
+        res.status(422).json({ error: "Este PDF não contém texto legível. Se for digitalizado como imagem, cole o conteúdo textual do edital.", code: "PDF_TEXT_UNAVAILABLE" });
+        return;
+      }
+      if (text.length > 120000) {
+        res.status(413).json({ error: "O texto extraído ultrapassa o limite de 120 mil caracteres. Envie um trecho menor do edital.", code: "TEXT_TOO_LARGE" });
+        return;
+      }
+      const result = await saveVerticalizedDocument({
+        userId: userIdFrom(req as UltraRequest),
+        name: parsed.data.name,
+        source: "pdf",
+        text,
+        concurso: parsed.data.concurso,
+        cargo: parsed.data.cargo,
+        sizeBytes: buffer.length,
+      });
+      res.json(result);
+    } catch (error) {
+      if (error instanceof Error && error.message === "Invalid PDF structure") {
+        res.status(422).json({ error: "Não foi possível ler este PDF. Tente outro arquivo ou cole o texto do edital.", code: "PDF_PARSE_FAILED" });
+        return;
+      }
+      sendStudyError(res, error);
+    }
+  });
+
+  router.post("/goals", requireMutation, async (req, res) => {
+    const parsed = goalInputSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Confira os dados da meta e do edital.", code: "INVALID_INPUT" });
+      return;
+    }
+    try {
+      const db = await getDb();
+      if (!db) {
+        res.status(503).json({ error: "O banco de dados ainda não está disponível.", code: "DATABASE_UNAVAILABLE" });
+        return;
+      }
+      const userId = userIdFrom(req as UltraRequest);
+      const goalId = await db.transaction(async tx => {
+        if (parsed.data.documentId !== null) {
+          const ownedDocument = await tx.select({ id: studyDocuments.id }).from(studyDocuments)
+            .where(and(eq(studyDocuments.id, parsed.data.documentId), eq(studyDocuments.userId, userId))).limit(1);
+          if (!ownedDocument[0]) throw new Error("DOCUMENT_NOT_OWNED");
+        }
+        const insertedGoal = await tx.insert(studyGoals).values({
+          userId,
+          documentId: parsed.data.documentId,
+          concurso: parsed.data.concurso,
+          cargo: parsed.data.cargo,
+          nivel: parsed.data.nivel,
+          banca: parsed.data.banca,
+          format: parsed.data.format,
+          hours: parsed.data.hours,
+          examDate: parsed.data.examDate,
+        }).$returningId();
+        const newGoalId = insertedGoal[0]?.id;
+        if (!newGoalId) throw new Error("GOAL_SAVE_FAILED");
+
+        const nodesToInsert: Array<typeof studyNodes.$inferInsert> = [];
+        let positionByLevel: Record<1 | 2, number> = { 1: 0, 2: 0 };
+        for (let disciplinePosition = 0; disciplinePosition < parsed.data.disciplines.length; disciplinePosition++) {
+          const disciplineDraft = parsed.data.disciplines[disciplinePosition];
+          const insertedDiscipline = await tx.insert(studyDisciplines).values({
+            userId,
+            goalId: newGoalId,
+            position: disciplinePosition,
+            name: disciplineDraft.name,
+          }).$returningId();
+          const disciplineId = insertedDiscipline[0]?.id;
+          if (!disciplineId) throw new Error("DISCIPLINE_SAVE_FAILED");
+          for (let topicPosition = 0; topicPosition < disciplineDraft.topics.length; topicPosition++) {
+            const topic = disciplineDraft.topics[topicPosition];
+            for (const level of [1, 2] as const) {
+              nodesToInsert.push({
+                userId,
+                goalId: newGoalId,
+                disciplineId,
+                level,
+                position: positionByLevel[level]++,
+                topicPosition,
+                subject: disciplineDraft.name,
+                topic,
+              });
+            }
+          }
+        }
+        if (nodesToInsert.length) await tx.insert(studyNodes).values(nodesToInsert);
+        await tx.insert(studyPreferences).values({ userId, activeGoalId: newGoalId })
+          .onDuplicateKeyUpdate({ set: { activeGoalId: newGoalId } });
+        return newGoalId;
+      });
+      res.status(201).json({ goalId });
+    } catch (error) {
+      if (error instanceof Error && error.message === "DOCUMENT_NOT_OWNED") {
+        res.status(404).json({ error: "O documento do edital não pertence a esta conta.", code: "DOCUMENT_NOT_FOUND" });
+        return;
+      }
+      sendStudyError(res, error);
+    }
+  });
 
   router.get("/snapshot", requireSession, async (req, res) => {
     try {
