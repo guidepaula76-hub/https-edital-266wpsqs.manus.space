@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { asc, and, desc, eq, inArray, isNull, lt, or } from "drizzle-orm";
-import { Router, type Express, type Response } from "express";
+import { Router, type Express, type Response, express } from "express";
 import { z } from "zod";
 import pdfParse from "pdf-parse";
 import {
@@ -280,7 +280,7 @@ export function createStudyRouter() {
     }
   });
 
-  router.post("/verticalize-pdf", requireMutation, async (req, res) => {
+  router.post("/verticalize-pdf", requireMutation, express.json({ limit: "12mb" }), async (req, res) => {
     const parsed = pdfVerticalizationSchema.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ error: "Envie um arquivo PDF válido, com até 8 MiB, e informe o concurso e o cargo.", code: "INVALID_INPUT" });
