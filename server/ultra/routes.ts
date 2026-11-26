@@ -562,6 +562,13 @@ export function createStudyRouter() {
         .where(and(eq(studyAnswers.userId, userId), eq(studyAnswers.requestId, parsed.data.requestId)))
         .limit(1);
       if (previousAttempt[0]) {
+        // Uma chave de idempotência identifica uma tentativa específica.
+        // Reutilizá-la para outra questão deve ser rejeitado, não devolver
+        // silenciosamente o feedback de uma questão diferente.
+        if (previousAttempt[0].questionId !== parsed.data.questionId) {
+          res.status(409).json({ error: "Este identificador de tentativa já foi usado em outra questão.", code: "IDEMPOTENCY_KEY_REUSED" });
+          return;
+        }
         const [questionRows] = await Promise.all([
           db.select().from(studyQuestions)
             .where(and(eq(studyQuestions.id, previousAttempt[0].questionId), eq(studyQuestions.userId, userId)))
@@ -663,6 +670,9 @@ export function createStudyRouter() {
           .where(and(eq(studyAnswers.userId, userId), eq(studyAnswers.requestId, parsed.data.requestId)))
           .limit(1);
         if (retryRows[0]) {
+          if (retryRows[0].questionId !== parsed.data.questionId) {
+            throw new Error("IDEMPOTENCY_KEY_REUSED");
+          }
           return {
             questionId: question.id,
             value: retryRows[0].value,
@@ -781,6 +791,10 @@ export function createStudyRouter() {
 
       res.json(feedback);
     } catch (error) {
+      if (error instanceof Error && error.message === "IDEMPOTENCY_KEY_REUSED") {
+        res.status(409).json({ error: "Este identificador de tentativa já foi usado em outra questão.", code: "IDEMPOTENCY_KEY_REUSED" });
+        return;
+      }
       sendStudyError(res, error);
     }
   });
