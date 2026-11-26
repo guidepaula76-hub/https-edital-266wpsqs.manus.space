@@ -19,7 +19,7 @@ import { answerInputSchema, goalInputSchema, type AnswerFeedback, type ErrorEntr
 import { getDb } from "../db";
 import { requireMutation, requireSession, type UltraRequest } from "./auth";
 import { generateNodeQuestions, verticalizeSyllabus } from "./ai";
-import { canGenerateQuestionBatch, FREE_DAILY_NEW_QUESTION_LIMIT, getSaoPauloDayKey, NEW_QUESTION_BATCH_SIZE } from "./quotas";
+import { canGenerateQuestionBatch, hasExpectedQuestionCount, FREE_DAILY_NEW_QUESTION_LIMIT, getSaoPauloDayKey, NEW_QUESTION_BATCH_SIZE } from "./quotas";
 import { storageGetSignedUrl, storagePut } from "../storage";
 
 const textVerticalizationSchema = z.object({
@@ -590,7 +590,7 @@ export function createStudyRouter() {
           });
           return;
         }
-        if (quotaResult.inserted.length !== NEW_QUESTION_BATCH_SIZE) throw new Error("QUESTION_SAVE_FAILED");
+        if (!hasExpectedQuestionCount(quotaResult.inserted.length, batchSize)) throw new Error("QUESTION_SAVE_FAILED");
         const rows = await db.select().from(studyQuestions)
           .where(and(eq(studyQuestions.userId, userId), eq(studyQuestions.generationId, generationId)))
           .orderBy(asc(studyQuestions.id));
