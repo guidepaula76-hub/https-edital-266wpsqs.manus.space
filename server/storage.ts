@@ -33,7 +33,7 @@ function getForgeConfig() {
     );
   }
 
-  const secureForgeUrl = validateStorageUrl(forgeUrl).replace(/\\/+$/, "");
+  const secureForgeUrl = validateStorageUrl(forgeUrl).replace(/\/+$/, "");
   return { forgeUrl: secureForgeUrl, forgeKey };
 }
 
