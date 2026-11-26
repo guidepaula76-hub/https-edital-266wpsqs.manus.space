@@ -7,7 +7,19 @@ const servers: Server[] = [];
 async function startTestApp() {
   const app = express();
   configureBodyParsers(app);
-  app.post("/api/study/verticalize-pdf", (req, res) => res.json({ length: req.body.payload.length }));
+  const requireTestSession: express.RequestHandler = (req, res, next) => {
+    if (req.get("Authorization") !== "Bearer test") {
+      res.status(401).end();
+      return;
+    }
+    next();
+  };
+  app.post(
+    "/api/study/verticalize-pdf",
+    requireTestSession,
+    express.json({ limit: "12mb" }),
+    (req, res) => res.json({ length: req.body.payload.length }),
+  );
   app.post("/api/other", (req, res) => res.json({ length: req.body.payload.length }));
   const server = createServer(app);
   await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
@@ -16,10 +28,13 @@ async function startTestApp() {
   if (!address || typeof address === "string") throw new Error("Test server did not bind");
   return `http://127.0.0.1:${address.port}`;
 }
-async function post(base: string, path: string, payload: string) {
+async function post(base: string, path: string, payload: string, authenticated = false) {
   return fetch(`${base}${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(authenticated ? { Authorization: "Bearer test" } : {}),
+    },
     body: JSON.stringify({ payload }),
   });
 }
@@ -28,12 +43,16 @@ afterEach(async () => {
 });
 
 describe("request body limits", () => {
-  it("allows the larger body only on the PDF verticalization endpoint", async () => {
+  it("parses larger PDF bodies only after session middleware", async () => {
     const base = await startTestApp();
     const payload = "x".repeat(1_100_000);
-    const pdfResponse = await post(base, "/api/study/verticalize-pdf", payload);
-    expect(pdfResponse.status).toBe(200);
-    expect(await pdfResponse.json()).toEqual({ length: payload.length });
+
+    const unauthenticated = await post(base, "/api/study/verticalize-pdf", payload);
+    expect(unauthenticated.status).toBe(401);
+
+    const authenticated = await post(base, "/api/study/verticalize-pdf", payload, true);
+    expect(authenticated.status).toBe(200);
+    expect(await authenticated.json()).toEqual({ length: payload.length });
 
     const regularResponse = await post(base, "/api/other", payload);
     expect(regularResponse.status).toBe(413);
