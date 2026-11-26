@@ -522,6 +522,7 @@ export function createStudyRouter() {
           const used = usageRows[0]?.questionGenerations ?? 0;
           if (!canGenerateQuestionBatch(used)) return { allowed: false, used, inserted: [] as Array<{ id: number }> };
           const inserted = await tx.insert(studyQuestions).values(insertRows).$returningId();
+          if (inserted.length !== NEW_QUESTION_BATCH_SIZE) throw new Error("QUESTION_SAVE_FAILED");
           await tx.update(studyDailyUsage).set({
             questionGenerations: used + insertRows.length,
           }).where(and(eq(studyDailyUsage.userId, userId), eq(studyDailyUsage.day, today)));
@@ -543,6 +544,11 @@ export function createStudyRouter() {
         res.status(201).json({
           node: updatedNode,
           questions: rows.map(publicQuestion),
+          usage: {
+            used: quotaResult.used,
+            limit: FREE_DAILY_NEW_QUESTION_LIMIT,
+            remaining: Math.max(0, FREE_DAILY_NEW_QUESTION_LIMIT - quotaResult.used),
+          },
           notice: "Questões geradas por IA, não oficiais. Confira a legislação e o edital vigentes.",
         });
       } finally {
