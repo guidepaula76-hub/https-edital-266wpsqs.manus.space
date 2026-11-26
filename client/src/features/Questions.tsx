@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useSearch } from "wouter";
-import { ArrowLeft, ArrowRight, ListFilter, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, ListFilter, Sparkles } from "lucide-react";
 import { Card, DemoNote, MechButton, SectionHeading, Tag } from "@/components/ultra/UI";
 import { useProgress } from "@/lib/progress";
 import { api } from "@/lib/api";
