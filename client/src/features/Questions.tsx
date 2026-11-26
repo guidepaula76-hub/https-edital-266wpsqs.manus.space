@@ -107,7 +107,7 @@ function NodeStudySession({ nodeId }: { nodeId: number }) {
   if (!data.questions.length) return (
     <main className="question-page">
       <div className="question-page-topline"><MechButton color="white" small onClick={() => history.back()}><ArrowLeft size={15} /> Voltar à trilha</MechButton><Tag tone="green">Nível {data.node.level}</Tag></div>
-      <SectionHeading eyebrow={data.node.subject} title={data.node.topic} description="Este tópico ainda não possui questões salvas. Gere uma sessão de três questões para começar." />
+      <SectionHeading eyebrow={data.node.subject} title={data.node.topic} description="Este tópico ainda não possui questões salvas. Gere uma sessão de questões para começar." />
       {error && <Card role="alert">{error}</Card>}
       <MechButton color="purple" disabled={generating} onClick={() => void generate()}>{generating ? "Gerando questões…" : <><Sparkles size={16} /> Gerar questões com IA</>}</MechButton>
       <DemoNote>Questões inéditas geradas por IA; não são questões oficiais. Confira a legislação e o edital vigentes.</DemoNote>
