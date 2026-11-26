@@ -118,6 +118,34 @@ describe("AI question generation", () => {
     }));
   });
 
+  it("generates a smaller final batch when only one Free question remains", async () => {
+    const questions = [makeQuestion(1)];
+    invokeLLM.mockResolvedValue({
+      choices: [{ message: { role: "assistant", content: JSON.stringify({ questions }) } }],
+    });
+
+    const { generateNodeQuestions } = await import("./ai");
+    const result = await generateNodeQuestions({
+      subject: "Direito Administrativo",
+      topic: "Atos administrativos",
+      board: "IBAM",
+      format: "AD",
+      level: 1,
+      questionCount: 1,
+    });
+
+    expect(result).toHaveLength(1);
+    expect(invokeLLM).toHaveBeenCalledWith(expect.objectContaining({
+      outputSchema: expect.objectContaining({
+        schema: expect.objectContaining({
+          properties: expect.objectContaining({
+            questions: expect.objectContaining({ minItems: 1, maxItems: 1 }),
+          }),
+        }),
+      }),
+    }));
+  });
+
   it("rejects a question whose rationale marks a different answer as correct", async () => {
     const questions = [makeQuestion(1), makeQuestion(2), makeQuestion(3)];
     questions[0].rationales[0].correct = true;
