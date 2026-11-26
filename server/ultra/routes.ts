@@ -51,10 +51,10 @@ async function saveVerticalizedDocument(input: {
   });
   const db = await getDb();
   if (!db) throw new Error("DATABASE_UNAVAILABLE");
-  const storedFile = input.source === "pdf"
-    ? await storagePut(`ultra-study-documents/${input.userId}/${randomUUID()}.pdf`, input.fileBuffer ?? Buffer.alloc(0), "application/pdf")
-    : null;
   if (input.source === "pdf" && !input.fileBuffer?.length) throw new Error("PDF_FILE_MISSING");
+  const storedFile = input.source === "pdf"
+    ? await storagePut(`ultra-study-documents/${input.userId}/${randomUUID()}.pdf`, input.fileBuffer!, "application/pdf")
+    : null;
   const inserted = await db.insert(studyDocuments).values({
     userId: input.userId,
     name: input.name,
