@@ -43,11 +43,17 @@ function NodeStudySession({ nodeId }: { nodeId: number }) {
     setGenerating(true);
     setError(null);
     try {
-      const result = await api<NodeQuestionsResponse & { notice?: string }>(
+      const result = await api<NodeQuestionsResponse & {
+        notice?: string;
+        usage?: { used: number; limit: number; remaining: number };
+      }>(
         `/api/study/nodes/${nodeId}/generate`, { method: "POST", body: {} }
       );
       setData(result);
-      setNotice(result.notice ?? "Questões geradas por IA. Confira a legislação e o edital vigentes.");
+      const quotaNotice = result.usage
+        ? `Hoje: ${result.usage.used} de ${result.usage.limit} questões novas utilizadas; restam ${result.usage.remaining}.`
+        : "";
+      setNotice([result.notice ?? "Questões geradas por IA. Confira a legislação e o edital vigentes.", quotaNotice].filter(Boolean).join(" "));
       setIndex(0);
       setSelected(null);
       setFeedback(null);
