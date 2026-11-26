@@ -459,6 +459,76 @@ function NodeStudySession({ nodeId }: { nodeId: number }) {
   );
 }
 
+
+function ErrorReviewSession({ questionId }: { questionId: number }) {
+  const { refresh } = useProgress();
+  const [, navigate] = useLocation();
+  const [question, setQuestion] = useState<StudyQuestion | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<AnswerFeedback | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const requestId = useRef<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await api<StudyQuestion>(`/api/study/questions/${questionId}`);
+      setQuestion(result);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Não foi possível carregar esta questão do caderno.");
+    } finally {
+      setLoading(false);
+    }
+  }, [questionId]);
+  useEffect(() => { void load(); }, [load]);
+
+  const submit = async (value: string | null) => {
+    if (!question || saving || feedback) return;
+    if (value === null && question.format !== "CE") return;
+    requestId.current ??= crypto.randomUUID();
+    setSaving(true);
+    setError(null);
+    try {
+      const result = await api<AnswerFeedback>("/api/study/answers", {
+        method: "POST",
+        body: { questionId: question.id, value, requestId: requestId.current },
+      });
+      requestId.current = null;
+      setSelected(value);
+      setFeedback(result);
+      await refresh().catch(() => {});
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Não foi possível registrar a revisão.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) return <main className="question-page"><SectionHeading eyebrow="CADERNO DE ERROS" title="Carregando revisão…" description="Buscando a questão salva na sua conta." /></main>;
+  if (!question) return <main className="question-page"><SectionHeading eyebrow="CADERNO DE ERROS" title="Questão indisponível" description={error ?? "Esta questão não está mais disponível."} /><MechButton color="white" onClick={() => navigate("/app/perfil")}>Voltar ao perfil</MechButton></main>;
+
+  return (
+    <main className="question-page">
+      <div className="question-page-topline"><MechButton color="white" small onClick={() => navigate("/app/perfil")}><ArrowLeft size={15} /> Voltar</MechButton><Tag tone="coral">Revisão de erro</Tag></div>
+      <SectionHeading eyebrow={question.subject} title={question.topic} description="Responda novamente. O gabarito e os comentários só aparecem depois do envio." />
+      {error && <Card role="alert">{error}</Card>}
+      <Card className="question-card">
+        <div className="question-card-meta"><div className="question-tags"><Tag tone="purple">{question.board}</Tag><Tag tone="muted">{question.difficulty}</Tag></div><span>{question.format === "CE" ? "Certo / Errado" : question.format === "AD" ? "Alternativas A–D" : "Alternativas A–E"}</span></div>
+        <p className="question-prompt">{question.prompt}</p>
+        <div className={`question-choices ${question.format === "CE" ? "question-choices-binary" : ""}`} role="group" aria-label="Alternativas">
+          {question.choices.map(choice => <MechButton key={choice.value} type="button" color={selected === choice.value ? "purple" : "white"} disabled={Boolean(feedback) || saving} onClick={() => setSelected(choice.value)}><span className="choice-mark">{choice.value}</span><span className="choice-copy">{choice.text}</span></MechButton>)}
+        </div>
+        {!feedback && <div className="question-submit-row"><span className="question-submit-hint">{question.format === "CE" ? "Você também pode deixar em branco." : "Selecione uma alternativa."}</span><div className="question-submit-actions">{question.format === "CE" && <MechButton color="white" small disabled={saving} onClick={() => void submit(null)}>Deixar em branco</MechButton>}<MechButton color="green" disabled={!selected || saving} onClick={() => selected && void submit(selected)}>{saving ? "Registrando…" : "Confirmar revisão"}</MechButton></div></div>}
+      </Card>
+      {feedback && <Card className={`question-feedback ${feedback.correct ? "feedback-correct" : "feedback-support"}`}><div className="feedback-content"><div className="feedback-title-row"><h3>{feedback.correct ? "Você acertou na revisão!" : feedback.blank ? "Resposta em branco" : "Ainda precisa revisar"}</h3><Tag tone={feedback.correct ? "green" : "coral"}>{feedback.correct ? "Acertou" : `Gabarito: ${feedback.correctAnswer}`}</Tag></div><p className="feedback-explanation">{feedback.explanation}</p><div className="answer-justifications"><h4>Justificativa das alternativas</h4>{feedback.rationales.map(item => <div className="answer-justification" key={item.value}><strong>{item.value} · {item.text}</strong><p>{item.rationale}</p></div>)}</div><div className="trap-callout"><span className="trap-label"><Sparkles size={13} /> Pegadinha</span><p>{feedback.trap}</p></div><p><strong>XP recebido:</strong> {feedback.xpAwarded}</p><p>{feedback.correct ? "Este erro foi marcado como resolvido no seu caderno." : "A questão continua no caderno para uma próxima revisão."}</p></div></Card>}
+      <DemoNote>Esta revisão consulta o histórico da sua conta e registra a nova tentativa no servidor.</DemoNote>
+    </main>
+  );
+}
+
 export default function Questions() {
   const search = useSearch();
   const [, navigate] = useLocation();
@@ -744,6 +814,7 @@ export default function Questions() {
   const progressAnswers = state.answers.length;
   const answeredToday = state.answers.filter(answer => answer.correct).length;
 
+  if (errorId && /^\\d+$/.test(errorId)) return <ErrorReviewSession questionId={Number(errorId)} />;
   if (nodeParam && /^\\d+$/.test(nodeParam)) return <NodeStudySession nodeId={Number(nodeParam)} />;
 
   if (isSimulation) {
