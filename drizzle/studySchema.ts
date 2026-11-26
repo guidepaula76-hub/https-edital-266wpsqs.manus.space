@@ -17,7 +17,7 @@ import type {
   ExamFormat,
   QuestionChoice,
 } from "../shared/ultra";
-import { users } from "./schema";
+import { users } from "./baseSchema";
 
 /** User-owned source file/text from a successful edital verticalization preview. */
 export const studyDocuments = mysqlTable(
