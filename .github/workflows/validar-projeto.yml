@@ -10,7 +10,7 @@ on:
       - main
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: validar-${{ github.ref }}
@@ -51,3 +51,16 @@ jobs:
             drizzle/*.sql
             drizzle/meta/*.json
           if-no-files-found: error
+      - name: Salvar migração gerada na branch do PR
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_BRANCH: ${{ github.head_ref }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add drizzle/0002_study_tables.sql drizzle/meta/0002_snapshot.json drizzle/meta/_journal.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Add generated study tables migration"
+            git push origin "HEAD:${TARGET_BRANCH}"
+          fi
