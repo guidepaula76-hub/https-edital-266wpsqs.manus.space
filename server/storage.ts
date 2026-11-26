@@ -62,6 +62,7 @@ export async function storagePut(
 
   const presignResp = await fetch(presignUrl, {
     headers: { Authorization: `Bearer ${forgeKey}` },
+    redirect: "error",
   });
 
   if (!presignResp.ok) {
@@ -82,6 +83,7 @@ export async function storagePut(
     method: "PUT",
     headers: { "Content-Type": contentType },
     body: blob,
+    redirect: "error",
   });
 
   if (!uploadResp.ok) {
@@ -105,6 +107,7 @@ export async function storageGetSignedUrl(relKey: string): Promise<string> {
 
   const resp = await fetch(getUrl, {
     headers: { Authorization: `Bearer ${forgeKey}` },
+    redirect: "error",
   });
 
   if (!resp.ok) {
