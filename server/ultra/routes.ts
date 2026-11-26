@@ -791,7 +791,7 @@ export function createStudyRouter() {
       res.json(feedback);
     } catch (error) {
       if (error instanceof Error && error.message === "IDEMPOTENCY_KEY_REUSED") {
-        res.status(409).json({ error: "Este identificador de tentativa já foi usado em outra questão.", code: "IDEMPOTENCY_KEY_REUSED" });
+        res.status(409).json({ error: "Este identificador de tentativa já foi usado com outra questão ou resposta.", code: "IDEMPOTENCY_KEY_REUSED" });
         return;
       }
       sendStudyError(res, error);
