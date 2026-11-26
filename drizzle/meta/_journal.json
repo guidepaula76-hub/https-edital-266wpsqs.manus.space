@@ -15,6 +15,13 @@
       "when": 1795533910661,
       "tag": "0001_auth_sessions",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1795730373171,
+      "tag": "0002_study_tables",
+      "breakpoints": true
     }
   ]
 }
