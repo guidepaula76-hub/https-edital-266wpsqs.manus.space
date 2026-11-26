@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const invokeLLM = vi.fn();
+const { invokeLLM } = vi.hoisted(() => ({ invokeLLM: vi.fn() }));
 vi.mock("../_core/llm", () => ({ invokeLLM }));
 
 import { verticalizeSyllabus } from "./ai";
