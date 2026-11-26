@@ -71,4 +71,69 @@ describe("AI edital verticalization", () => {
       cargo: "Agente",
     })).rejects.toThrow("não retornou");
   });
+
+describe("AI question generation", () => {
+  beforeEach(() => invokeLLM.mockReset());
+
+  const makeQuestion = (number: number) => ({
+    prompt: `Questão inédita número ${number}: qual alternativa apresenta a regra correta?`,
+    difficulty: "Médio",
+    choices: [
+      { value: "A", text: "A primeira alternativa." },
+      { value: "B", text: "A segunda alternativa correta." },
+      { value: "C", text: "A terceira alternativa." },
+      { value: "D", text: "A quarta alternativa." },
+    ],
+    correctAnswer: "B",
+    explanation: "A segunda alternativa corresponde à regra aplicável ao tema.",
+    trap: "A pegadinha está em confundir conceitos próximos.",
+    rationales: [
+      { value: "A", text: "A primeira alternativa.", correct: false, rationale: "Não corresponde à regra apresentada." },
+      { value: "B", text: "A segunda alternativa correta.", correct: true, rationale: "É a alternativa que corresponde à regra." },
+      { value: "C", text: "A terceira alternativa.", correct: false, rationale: "Aplica o conceito de forma incorreta." },
+      { value: "D", text: "A quarta alternativa.", correct: false, rationale: "Generaliza uma exceção." },
+    ],
+  });
+
+  it("accepts exactly three questions with alternatives and rationales aligned to A-D", async () => {
+    const questions = [makeQuestion(1), makeQuestion(2), makeQuestion(3)];
+    invokeLLM.mockResolvedValue({
+      choices: [{ message: { role: "assistant", content: JSON.stringify({ questions }) } }],
+    });
+
+    const { generateNodeQuestions } = await import("./ai");
+    const result = await generateNodeQuestions({
+      subject: "Direito Administrativo",
+      topic: "Atos administrativos",
+      board: "IBAM",
+      format: "AD",
+      level: 1,
+    });
+
+    expect(result).toHaveLength(3);
+    expect(result[0].correctAnswer).toBe("B");
+    expect(result[0].rationales.filter(item => item.correct)).toHaveLength(1);
+    expect(invokeLLM).toHaveBeenCalledWith(expect.objectContaining({
+      outputSchema: expect.objectContaining({ strict: true }),
+    }));
+  });
+
+  it("rejects a question whose rationale marks a different answer as correct", async () => {
+    const questions = [makeQuestion(1), makeQuestion(2), makeQuestion(3)];
+    questions[0].rationales[0].correct = true;
+    invokeLLM.mockResolvedValue({
+      choices: [{ message: { role: "assistant", content: JSON.stringify({ questions }) } }],
+    });
+
+    const { generateNodeQuestions } = await import("./ai");
+    await expect(generateNodeQuestions({
+      subject: "Direito Administrativo",
+      topic: "Atos administrativos",
+      board: "IBAM",
+      format: "AD",
+      level: 1,
+    })).rejects.toThrow("alternativas incompatíveis");
+  });
+});
+
 });
