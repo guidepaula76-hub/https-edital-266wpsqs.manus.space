@@ -1,0 +1,30 @@
+name: Importar código do edital.zip
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  importar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar repositório
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Extrair arquivos sem substituir os existentes
+        run: |
+          test -f edital.zip
+          unzip -n edital.zip -d .
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Nenhum arquivo novo para importar."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Importa código-fonte do UltraConcursos IA"
+          git push
