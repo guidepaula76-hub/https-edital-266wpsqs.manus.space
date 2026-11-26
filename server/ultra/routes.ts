@@ -9,6 +9,7 @@ import {
   studyDocuments,
   studyErrorEntries,
   studyGoals,
+  studyDailyUsage,
   studyNodes,
   studyPreferences,
   studyQuestions,
@@ -18,6 +19,7 @@ import { answerInputSchema, goalInputSchema, type AnswerFeedback, type ErrorEntr
 import { getDb } from "../db";
 import { requireMutation, requireSession, type UltraRequest } from "./auth";
 import { generateNodeQuestions, verticalizeSyllabus } from "./ai";
+import { canGenerateQuestionBatch, FREE_DAILY_NEW_QUESTION_LIMIT, getSaoPauloDayKey, NEW_QUESTION_BATCH_SIZE } from "./quotas";
 
 const textVerticalizationSchema = z.object({
   text: z.string().trim().min(20).max(120000),
@@ -449,6 +451,21 @@ export function createStudyRouter() {
         return;
       }
       try {
+        // Fast pre-check avoids unnecessary AI calls; the transaction below is authoritative.
+        const today = getSaoPauloDayKey();
+        const currentUsage = await db.select({ questionGenerations: studyDailyUsage.questionGenerations })
+          .from(studyDailyUsage)
+          .where(and(eq(studyDailyUsage.userId, userId), eq(studyDailyUsage.day, today)))
+          .limit(1);
+        const usedBeforeGeneration = currentUsage[0]?.questionGenerations ?? 0;
+        if (!canGenerateQuestionBatch(usedBeforeGeneration)) {
+          res.status(429).json({
+            error: "Você atingiu o limite gratuito de 10 questões novas hoje. As revisões continuam liberadas.",
+            code: "DAILY_QUESTION_LIMIT",
+            usage: { used: usedBeforeGeneration, limit: FREE_DAILY_NEW_QUESTION_LIMIT, remaining: Math.max(0, FREE_DAILY_NEW_QUESTION_LIMIT - usedBeforeGeneration) },
+          });
+          return;
+        }
         const generated = await generateNodeQuestions({
           subject: node.subject,
           topic: node.topic,
@@ -489,8 +506,36 @@ export function createStudyRouter() {
           source: "ai" as const,
           generationId,
         }));
-        const inserted = await db.insert(studyQuestions).values(insertRows).$returningId();
-        if (inserted.length !== 3) throw new Error("QUESTION_SAVE_FAILED");
+        // Reserve quota and persist the whole batch atomically. Until a verified
+        // Pro entitlement exists, every account follows the Free allowance.
+        const quotaResult = await db.transaction(async tx => {
+          await tx.insert(studyDailyUsage).values({
+            userId,
+            day: today,
+            verticalizations: 0,
+            questionGenerations: 0,
+          }).onDuplicateKeyUpdate({ set: { day: today } });
+          const usageRows = await tx.select().from(studyDailyUsage)
+            .where(and(eq(studyDailyUsage.userId, userId), eq(studyDailyUsage.day, today)))
+            .limit(1)
+            .for("update");
+          const used = usageRows[0]?.questionGenerations ?? 0;
+          if (!canGenerateQuestionBatch(used)) return { allowed: false, used, inserted: [] as Array<{ id: number }> };
+          const inserted = await tx.insert(studyQuestions).values(insertRows).$returningId();
+          await tx.update(studyDailyUsage).set({
+            questionGenerations: used + insertRows.length,
+          }).where(and(eq(studyDailyUsage.userId, userId), eq(studyDailyUsage.day, today)));
+          return { allowed: true, used: used + inserted.length, inserted };
+        });
+        if (!quotaResult.allowed) {
+          res.status(429).json({
+            error: "Você atingiu o limite gratuito de 10 questões novas hoje. As revisões continuam liberadas.",
+            code: "DAILY_QUESTION_LIMIT",
+            usage: { used: quotaResult.used, limit: FREE_DAILY_NEW_QUESTION_LIMIT, remaining: Math.max(0, FREE_DAILY_NEW_QUESTION_LIMIT - quotaResult.used) },
+          });
+          return;
+        }
+        if (quotaResult.inserted.length !== NEW_QUESTION_BATCH_SIZE) throw new Error("QUESTION_SAVE_FAILED");
         const rows = await db.select().from(studyQuestions)
           .where(and(eq(studyQuestions.userId, userId), eq(studyQuestions.generationId, generationId)))
           .orderBy(asc(studyQuestions.id));
