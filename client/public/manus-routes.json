@@ -1,0 +1,17 @@
+{
+  "routes": [
+    { "path": "/", "title": "UltraConcursos IA" },
+    { "path": "/login", "title": "Entrar" },
+    { "path": "/cadastro", "title": "Começar jornada" },
+    { "path": "/onboarding", "title": "Seu objetivo" },
+    { "path": "/app", "title": "Início" },
+    { "path": "/app/trilha", "title": "Trilha de estudos" },
+    { "path": "/app/questoes", "title": "Questões e Simulado" },
+    {
+      "path": "/app/conteudos",
+      "title": "Conteúdos, Fixação, Cronograma e Redação"
+    },
+    { "path": "/app/ranking", "title": "Ranking" },
+    { "path": "/app/perfil", "title": "Perfil e Caderno de Erros" }
+  ]
+}

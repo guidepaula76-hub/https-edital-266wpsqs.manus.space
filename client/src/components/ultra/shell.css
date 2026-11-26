@@ -1,0 +1,500 @@
+.app-shell {
+  min-height: 100vh;
+}
+.app-sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 236px;
+  background: var(--card);
+  border-right: 1.5px solid var(--line);
+  padding: 30px 19px 20px;
+  display: flex;
+  flex-direction: column;
+  z-index: 30;
+}
+.app-sidebar .brand {
+  font-size: 19px;
+  gap: 7px;
+  margin: 0 3px 33px;
+}
+.app-sidebar .brand-mark {
+  width: 33px;
+  height: 35px;
+}
+.sidebar-label {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  font-weight: 800;
+  color: var(--muted);
+  margin: 0 15px 16px;
+}
+.app-sidebar nav {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  border: 1.5px solid transparent;
+  background: none;
+  border-radius: 12px;
+  padding: 13px 14px;
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 14px;
+  text-align: left;
+}
+.sidebar-link.active {
+  color: #8174e6;
+  background: var(--purple-bg);
+  border-color: #ded7ff;
+}
+.dark .sidebar-link.active {
+  border-color: #58517c;
+}
+.sidebar-link:hover {
+  background: var(--soft);
+}
+.sidebar-link.active:hover {
+  background: var(--purple-bg);
+}
+.nav-chevron {
+  margin-left: auto;
+}
+.sidebar-bottom {
+  margin-top: auto;
+  padding-top: 26px;
+}
+.sidebar-encourage {
+  border-radius: 17px;
+  background: var(--mint-bg);
+  padding: 12px 13px 18px;
+  text-align: center;
+}
+.sidebar-encourage .frog {
+  width: 100px;
+  height: 100px;
+  margin: -6px auto -2px;
+}
+.sidebar-encourage strong {
+  font-family: "Nunito Sans";
+  font-size: 14px;
+}
+.sidebar-encourage p {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.5;
+  margin: 6px 0 0;
+}
+.sidebar-exit {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  background: none;
+  border: 0;
+  font-size: 11px;
+  color: var(--muted);
+  margin: 22px 12px 14px;
+}
+.sidebar-demo {
+  font-size: 8px;
+  letter-spacing: 0.17em;
+  color: #9da8b6;
+  margin: 0 14px;
+}
+.app-workspace {
+  margin-left: 236px;
+}
+.app-topbar {
+  height: 81px;
+  padding: 0 37px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  background: var(--card);
+}
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.topbar-section {
+  font-weight: 800;
+  font-family: "Nunito Sans";
+  font-size: 14px;
+}
+.topbar-divider {
+  height: 16px;
+  width: 1px;
+  background: var(--line);
+}
+.topbar-message {
+  color: var(--muted);
+  font-size: 11px;
+}
+.topbar-stats {
+  display: flex;
+  align-items: center;
+  gap: 19px;
+}
+.stat-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: "Nunito Sans";
+  font-size: 15px;
+  white-space: nowrap;
+}
+.stat-pill small {
+  font-size: 10px;
+  color: var(--muted);
+}
+.xp-pill {
+  color: #8b80f9;
+}
+.streak-pill {
+  color: #eea957;
+}
+.notification-button {
+  position: relative;
+  border: 0;
+  background: none;
+  padding: 4px;
+  color: var(--muted);
+}
+.notification-button i {
+  position: absolute;
+  right: 4px;
+  top: 2px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--coral);
+  border: 1px solid var(--card);
+}
+.user-avatar {
+  width: 37px;
+  height: 37px;
+  border-radius: 12px;
+  background: #ede9ff;
+  border: 2px solid #dcd5ff;
+  color: #8c7ae6;
+  font-weight: 900;
+  font-family: "Nunito Sans";
+  font-size: 16px;
+}
+.app-main {
+  max-width: 1260px;
+  margin: 0 auto;
+  padding: 32px 37px 85px;
+}
+.mobile-brand,
+.mobile-bottom-nav {
+  display: none;
+}
+.tutor-widget {
+  position: fixed;
+  right: 26px;
+  bottom: 24px;
+  z-index: 45;
+}
+.tutor-trigger {
+  border-radius: 14px;
+  box-shadow: 0 4px 20px #7263d433;
+}
+.tutor-trigger i {
+  width: 5px;
+  height: 5px;
+  background: #c6ffdc;
+  border-radius: 50%;
+}
+.tutor-panel {
+  width: 360px;
+  border: 1.5px solid var(--line);
+  background: var(--card);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 12px 60px #1a29342e;
+  margin-bottom: 12px;
+}
+.tutor-panel > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 17px;
+  border-bottom: 1px solid var(--line);
+}
+.tutor-panel header strong {
+  font-family: "Nunito Sans";
+  font-size: 15px;
+}
+.tutor-panel header small {
+  display: block;
+  color: var(--muted);
+  font-size: 9px;
+  margin-top: 2px;
+}
+.tutor-icon {
+  padding: 9px;
+  background: var(--purple-bg);
+  color: var(--purple);
+  border-radius: 12px;
+  display: flex;
+}
+.tutor-panel header .icon-button {
+  border: 0;
+  background: var(--soft);
+  width: 29px;
+  height: 29px;
+}
+.tutor-messages {
+  max-height: 290px;
+  min-height: 130px;
+  overflow-y: auto;
+  padding: 17px;
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+.tutor-message {
+  border-radius: 13px;
+  padding: 12px;
+  font-size: 12px;
+  line-height: 1.6;
+  max-width: 94%;
+}
+.tutor-message.tutor {
+  background: var(--soft);
+  border-bottom-left-radius: 4px;
+  align-self: flex-start;
+}
+.tutor-message.student {
+  background: var(--purple-bg);
+  border-bottom-right-radius: 4px;
+  align-self: flex-end;
+}
+.tutor-typing {
+  font-size: 10px;
+  color: var(--muted);
+  padding: 0 5px;
+}
+.tutor-suggestions {
+  display: flex;
+  gap: 6px;
+  padding: 0 17px 12px;
+}
+.tutor-suggestions button {
+  border: 1px solid var(--line);
+  background: var(--card);
+  border-radius: 8px;
+  font-size: 10px;
+  padding: 6px;
+}
+.tutor-input {
+  display: flex;
+  gap: 7px;
+  padding: 13px;
+  border-top: 1px solid var(--line);
+}
+.tutor-input input {
+  font-size: 11px;
+  min-width: 0;
+}
+.tutor-input .mech-button {
+  padding: 8px 13px 6px;
+}
+.tutor-disclaimer {
+  font-size: 9px;
+  text-align: center;
+  color: var(--muted);
+  padding-bottom: 10px;
+}
+.notification-content {
+  text-align: center;
+}
+.notification-badge {
+  background: var(--purple-bg);
+  color: var(--purple);
+  border-radius: 16px;
+  display: inline-flex;
+  padding: 16px;
+  margin: 6px 0 20px;
+}
+.notification-content p {
+  color: var(--muted);
+  margin-bottom: 24px;
+}
+.simulation-focus .app-sidebar,
+.simulation-focus .app-topbar,
+.simulation-focus .mobile-bottom-nav,
+.simulation-focus .tutor-widget {
+  display: none !important;
+}
+.simulation-focus .app-workspace {
+  margin: 0;
+}
+.simulation-focus .app-main {
+  max-width: 1000px;
+}
+@media (min-width: 1500px) {
+  .app-sidebar {
+    width: 255px;
+  }
+  .app-workspace {
+    margin-left: 255px;
+  }
+  .app-sidebar .brand {
+    font-size: 21px;
+  }
+}
+@media (max-width: 1100px) and (min-width: 768px) {
+  .app-sidebar {
+    width: 200px;
+    padding: 25px 13px;
+  }
+  .app-workspace {
+    margin-left: 200px;
+  }
+  .app-sidebar .brand {
+    font-size: 16px;
+  }
+  .app-sidebar .brand small {
+    font-size: 8px;
+  }
+  .topbar-message,
+  .topbar-divider {
+    display: none;
+  }
+  .app-topbar {
+    padding: 0 25px;
+  }
+  .app-main {
+    padding: 28px 25px 75px;
+  }
+  .topbar-stats {
+    gap: 14px;
+  }
+}
+@media (max-width: 767px) {
+  .app-sidebar {
+    display: none;
+  }
+  .app-workspace {
+    margin-left: 0;
+  }
+  .app-topbar {
+    height: 70px;
+    padding: 0 18px;
+    gap: 8px;
+  }
+  .topbar-left {
+    gap: 8px;
+  }
+  .mobile-brand {
+    display: block;
+  }
+  .mobile-brand .brand-mark {
+    width: 32px;
+    height: 33px;
+    border-radius: 10px;
+  }
+  .topbar-section {
+    font-size: 12px;
+  }
+  .topbar-message,
+  .topbar-divider {
+    display: none;
+  }
+  .topbar-stats {
+    gap: 12px;
+  }
+  .stat-pill {
+    font-size: 13px;
+    gap: 4px;
+  }
+  .stat-pill svg {
+    width: 17px;
+  }
+  .stat-pill small {
+    display: none;
+  }
+  .user-avatar {
+    width: 30px;
+    height: 32px;
+    border-radius: 9px;
+    font-size: 13px;
+  }
+  .notification-button {
+    display: none;
+  }
+  .app-main {
+    padding: 24px 18px 145px;
+  }
+  .mobile-bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    background: var(--card);
+    border-top: 1.5px solid var(--line);
+    z-index: 40;
+    padding: 10px 7px max(12px, env(safe-area-inset-bottom));
+    justify-content: space-around;
+    box-shadow: 0 -4px 20px #23324704;
+  }
+  .mobile-bottom-nav button {
+    width: 16.66%;
+    padding: 3px 0 0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-direction: column;
+    border: 0;
+    background: none;
+    color: var(--muted);
+    font-size: 9px;
+    font-weight: 700;
+  }
+  .mobile-bottom-nav button svg {
+    padding: 3px;
+    width: 29px;
+    height: 29px;
+    border-radius: 8px;
+  }
+  .mobile-bottom-nav button.active {
+    color: #8b80f9;
+  }
+  .mobile-bottom-nav button.active svg {
+    background: var(--purple-bg);
+  }
+  .tutor-widget {
+    bottom: 91px;
+    right: 15px;
+  }
+  .tutor-trigger {
+    min-height: 37px;
+    padding: 7px 11px 5px;
+    font-size: 11px;
+    border-radius: 10px;
+  }
+  .tutor-trigger svg {
+    width: 15px;
+  }
+  .tutor-panel {
+    width: min(350px, calc(100vw - 30px));
+    margin-bottom: 9px;
+  }
+  .tutor-messages {
+    max-height: 250px;
+  }
+  .simulation-focus .app-main {
+    padding: 20px 18px 40px;
+  }
+}
