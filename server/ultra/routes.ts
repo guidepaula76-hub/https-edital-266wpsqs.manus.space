@@ -588,17 +588,20 @@ export function createStudyRouter() {
         return;
       }
 
-      const [questionRows, preferenceRows] = await Promise.all([
+      const [questionRows, preferenceRows, errorRows] = await Promise.all([
         db.select().from(studyQuestions)
           .where(and(eq(studyQuestions.id, parsed.data.questionId), eq(studyQuestions.userId, userId)))
           .limit(1),
         db.select().from(studyPreferences)
           .where(eq(studyPreferences.userId, userId)).limit(1),
+        db.select({ id: studyErrorEntries.id }).from(studyErrorEntries)
+          .where(and(eq(studyErrorEntries.userId, userId), eq(studyErrorEntries.questionId, parsed.data.questionId), isNull(studyErrorEntries.resolvedAt))).limit(1),
       ]);
       const question = questionRows[0];
       const preferences = preferenceRows[0];
-      if (!question || !preferences || preferences.activeGoalId !== question.goalId) {
-        res.status(404).json({ error: "Questão não encontrada na sua meta ativa.", code: "QUESTION_NOT_FOUND" });
+      const isPendingErrorReview = Boolean(errorRows[0]);
+      if (!question || !preferences || (preferences.activeGoalId !== question.goalId && !isPendingErrorReview)) {
+        res.status(404).json({ error: "Questão não encontrada na sua meta ativa ou no caderno de erros.", code: "QUESTION_NOT_FOUND" });
         return;
       }
 
@@ -613,13 +616,15 @@ export function createStudyRouter() {
         res.status(404).json({ error: "Etapa não encontrada.", code: "NODE_NOT_FOUND" });
         return;
       }
-      const activeNodes = await db.select().from(studyNodes)
-        .where(and(eq(studyNodes.userId, userId), eq(studyNodes.goalId, question.goalId)))
-        .orderBy(asc(studyNodes.level), asc(studyNodes.position));
-      const nodeState = buildTrailNodes(activeNodes, new Map()).find(item => item.id === node.id);
-      if (!nodeState?.unlocked) {
-        res.status(403).json({ error: "Conclua as etapas anteriores para liberar esta questão.", code: "NODE_LOCKED" });
-        return;
+      if (!isPendingErrorReview) {
+        const activeNodes = await db.select().from(studyNodes)
+          .where(and(eq(studyNodes.userId, userId), eq(studyNodes.goalId, question.goalId)))
+          .orderBy(asc(studyNodes.level), asc(studyNodes.position));
+        const nodeState = buildTrailNodes(activeNodes, new Map()).find(item => item.id === node.id);
+        if (!nodeState?.unlocked) {
+          res.status(403).json({ error: "Conclua as etapas anteriores para liberar esta questão.", code: "NODE_LOCKED" });
+          return;
+        }
       }
 
       const blank = parsed.data.value === null;
