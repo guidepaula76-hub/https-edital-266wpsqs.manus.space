@@ -151,7 +151,7 @@ describe("AI question generation", () => {
       messages: expect.arrayContaining([
         expect.objectContaining({
           role: "system",
-          content: expect.stringContaining("dados não confiáveis"),
+          content: expect.stringContaining("conteúdo não confiável"),
         }),
       ]),
     }));
