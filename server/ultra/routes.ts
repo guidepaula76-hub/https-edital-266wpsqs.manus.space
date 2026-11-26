@@ -12,8 +12,9 @@ import {
   studyNodes,
   studyPreferences,
   studyQuestions,
+  studyQuestionRewards,
 } from "../../drizzle/schema";
-import { goalInputSchema, type ErrorEntry, type Goal, type StudyAnswer, type StudyQuestion, type StudySnapshot, type TrailNode, type Syllabus } from "../../shared/ultra";
+import { answerInputSchema, goalInputSchema, type AnswerFeedback, type ErrorEntry, type Goal, type StudyAnswer, type StudyQuestion, type StudySnapshot, type TrailNode, type Syllabus } from "../../shared/ultra";
 import { getDb } from "../db";
 import { requireMutation, requireSession, type UltraRequest } from "./auth";
 import { generateNodeQuestions, verticalizeSyllabus } from "./ai";
@@ -537,6 +538,232 @@ export function createStudyRouter() {
         return;
       }
       res.json(publicQuestion(question));
+    } catch (error) {
+      sendStudyError(res, error);
+    }
+  });
+
+
+  router.post("/answers", requireMutation, async (req, res) => {
+    const parsed = answerInputSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Informe uma questão, uma resposta válida e um identificador de tentativa.", code: "INVALID_INPUT" });
+      return;
+    }
+
+    try {
+      const userId = userIdFrom(req as UltraRequest);
+      const db = await getDb();
+      if (!db) throw new Error("DATABASE_UNAVAILABLE");
+
+      // Repetir a mesma requisição (por exemplo, após falha de rede) devolve
+      // exatamente o resultado anterior, sem somar XP ou duplicar o histórico.
+      const previousAttempt = await db.select().from(studyAnswers)
+        .where(and(eq(studyAnswers.userId, userId), eq(studyAnswers.requestId, parsed.data.requestId)))
+        .limit(1);
+      if (previousAttempt[0]) {
+        const [questionRows] = await Promise.all([
+          db.select().from(studyQuestions)
+            .where(and(eq(studyQuestions.id, previousAttempt[0].questionId), eq(studyQuestions.userId, userId)))
+            .limit(1),
+        ]);
+        const question = questionRows[0];
+        if (!question) {
+          res.status(404).json({ error: "Questão não encontrada.", code: "QUESTION_NOT_FOUND" });
+          return;
+        }
+        const feedback: AnswerFeedback = {
+          questionId: question.id,
+          value: previousAttempt[0].value,
+          correct: previousAttempt[0].correct,
+          blank: previousAttempt[0].blank,
+          correctAnswer: question.correctAnswer,
+          explanation: question.explanation,
+          trap: question.trap,
+          rationales: question.rationales,
+          xpAwarded: previousAttempt[0].xpAwarded,
+          nodeCompleted: previousAttempt[0].nodeCompleted,
+        };
+        res.json(feedback);
+        return;
+      }
+
+      const [questionRows, preferenceRows] = await Promise.all([
+        db.select().from(studyQuestions)
+          .where(and(eq(studyQuestions.id, parsed.data.questionId), eq(studyQuestions.userId, userId)))
+          .limit(1),
+        db.select().from(studyPreferences)
+          .where(eq(studyPreferences.userId, userId)).limit(1),
+      ]);
+      const question = questionRows[0];
+      const preferences = preferenceRows[0];
+      if (!question || !preferences || preferences.activeGoalId !== question.goalId) {
+        res.status(404).json({ error: "Questão não encontrada na sua meta ativa.", code: "QUESTION_NOT_FOUND" });
+        return;
+      }
+
+      const nodeRows = await db.select().from(studyNodes)
+        .where(and(
+          eq(studyNodes.id, question.nodeId),
+          eq(studyNodes.userId, userId),
+          eq(studyNodes.goalId, question.goalId),
+        )).limit(1);
+      const node = nodeRows[0];
+      if (!node) {
+        res.status(404).json({ error: "Etapa não encontrada.", code: "NODE_NOT_FOUND" });
+        return;
+      }
+      const activeNodes = await db.select().from(studyNodes)
+        .where(and(eq(studyNodes.userId, userId), eq(studyNodes.goalId, question.goalId)))
+        .orderBy(asc(studyNodes.level), asc(studyNodes.position));
+      const nodeState = buildTrailNodes(activeNodes, new Map()).find(item => item.id === node.id);
+      if (!nodeState?.unlocked) {
+        res.status(403).json({ error: "Conclua as etapas anteriores para liberar esta questão.", code: "NODE_LOCKED" });
+        return;
+      }
+
+      const blank = parsed.data.value === null;
+      if (blank && question.format !== "CE") {
+        res.status(400).json({ error: "Deixar em branco só é permitido no formato Certo/Errado.", code: "BLANK_NOT_ALLOWED" });
+        return;
+      }
+      if (!blank && !question.choices.some(choice => choice.value === parsed.data.value)) {
+        res.status(400).json({ error: "A alternativa informada não pertence a esta questão.", code: "INVALID_ANSWER" });
+        return;
+      }
+
+      const correct = !blank && parsed.data.value === question.correctAnswer;
+      const today = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit",
+      }).format(new Date());
+      const yesterdayDate = new Date(`${today}T12:00:00-03:00`);
+      yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+      const yesterday = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit",
+      }).format(yesterdayDate);
+
+      const feedback = await db.transaction(async tx => {
+        const retryRows = await tx.select().from(studyAnswers)
+          .where(and(eq(studyAnswers.userId, userId), eq(studyAnswers.requestId, parsed.data.requestId)))
+          .limit(1);
+        if (retryRows[0]) {
+          return {
+            questionId: question.id,
+            value: retryRows[0].value,
+            correct: retryRows[0].correct,
+            blank: retryRows[0].blank,
+            correctAnswer: question.correctAnswer,
+            explanation: question.explanation,
+            trap: question.trap,
+            rationales: question.rationales,
+            xpAwarded: retryRows[0].xpAwarded,
+            nodeCompleted: retryRows[0].nodeCompleted,
+          } satisfies AnswerFeedback;
+        }
+
+        let xpAwarded = 0;
+        if (correct) {
+          const existingReward = await tx.select({ id: studyQuestionRewards.id })
+            .from(studyQuestionRewards)
+            .where(and(
+              eq(studyQuestionRewards.userId, userId),
+              eq(studyQuestionRewards.questionId, question.id),
+            )).limit(1);
+          if (!existingReward[0]) {
+            await tx.insert(studyQuestionRewards).values({ userId, questionId: question.id });
+            // Pontuação fixa do produto: 10 XP pelo primeiro acerto de cada questão.
+            xpAwarded = 10;
+          }
+        }
+
+        await tx.insert(studyAnswers).values({
+          userId,
+          questionId: question.id,
+          nodeId: node.id,
+          subject: question.subject,
+          topic: question.topic,
+          requestId: parsed.data.requestId,
+          value: parsed.data.value,
+          correct,
+          blank,
+          xpAwarded,
+          nodeCompleted: false,
+        });
+
+        if (!blank && !correct) {
+          const existingError = await tx.select().from(studyErrorEntries)
+            .where(and(
+              eq(studyErrorEntries.userId, userId),
+              eq(studyErrorEntries.questionId, question.id),
+            )).limit(1);
+          if (existingError[0]) {
+            await tx.update(studyErrorEntries).set({
+              errorCount: existingError[0].errorCount + 1,
+              lastErrorAt: new Date(),
+              resolvedAt: null,
+            }).where(eq(studyErrorEntries.id, existingError[0].id));
+          } else {
+            await tx.insert(studyErrorEntries).values({
+              userId, questionId: question.id, nodeId: node.id, errorCount: 1,
+            });
+          }
+        } else if (correct) {
+          await tx.update(studyErrorEntries).set({ resolvedAt: new Date() }).where(and(
+            eq(studyErrorEntries.userId, userId),
+            eq(studyErrorEntries.questionId, question.id),
+            isNull(studyErrorEntries.resolvedAt),
+          ));
+        }
+
+        const nodeAttempts = await tx.select().from(studyAnswers)
+          .where(and(eq(studyAnswers.userId, userId), eq(studyAnswers.nodeId, node.id)));
+        const distinctAnswered = new Map<number, boolean>();
+        for (const attempt of nodeAttempts) {
+          distinctAnswered.set(attempt.questionId, Boolean(distinctAnswered.get(attempt.questionId)) || attempt.correct);
+        }
+        const answeredCount = distinctAnswered.size;
+        const correctCount = [...distinctAnswered.values()].filter(Boolean).length;
+        const nodeCompleted = answeredCount >= 3 && correctCount >= 2 && !node.completedAt;
+        if (nodeCompleted) {
+          await tx.update(studyNodes).set({ completedAt: new Date() }).where(and(
+            eq(studyNodes.id, node.id),
+            eq(studyNodes.userId, userId),
+            isNull(studyNodes.completedAt),
+          ));
+        }
+
+        const lastStudyDay = preferences.lastStudyDay ?? "";
+        const nextStreak = lastStudyDay === today
+          ? preferences.streak
+          : lastStudyDay === yesterday
+            ? preferences.streak + 1
+            : 1;
+        await tx.update(studyPreferences).set({
+          xp: preferences.xp + xpAwarded,
+          streak: nextStreak,
+          lastStudyDay: today,
+        }).where(eq(studyPreferences.userId, userId));
+
+        await tx.update(studyAnswers).set({ nodeCompleted }).where(and(
+          eq(studyAnswers.userId, userId),
+          eq(studyAnswers.requestId, parsed.data.requestId),
+        ));
+
+        return {
+          questionId: question.id,
+          value: parsed.data.value,
+          correct,
+          blank,
+          correctAnswer: question.correctAnswer,
+          explanation: question.explanation,
+          trap: question.trap,
+          rationales: question.rationales,
+          xpAwarded,
+          nodeCompleted,
+        } satisfies AnswerFeedback;
+      });
+
+      res.json(feedback);
     } catch (error) {
       sendStudyError(res, error);
     }
