@@ -11,7 +11,6 @@ import {
   studyGoals,
   studyNodes,
   studyPreferences,
-  studyQuestionRewards,
   studyQuestions,
 } from "../../drizzle/schema";
 import { goalInputSchema, type ErrorEntry, type Goal, type StudyAnswer, type StudyQuestion, type StudySnapshot, type TrailNode, type Syllabus } from "../../shared/ultra";
