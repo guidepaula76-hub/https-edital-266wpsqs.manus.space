@@ -33,7 +33,11 @@ function firstName(name: string) {
 }
 
 function timeGreeting() {
-  const hour = new Date().getHours();
+  const hour = Number(new Intl.DateTimeFormat("en-US", {
+    hour: "2-digit",
+    hourCycle: "h23",
+    timeZone: "America/Sao_Paulo",
+  }).format(new Date()));
   if (hour < 12) return "Bom dia";
   if (hour < 18) return "Boa tarde";
   return "Boa noite";
