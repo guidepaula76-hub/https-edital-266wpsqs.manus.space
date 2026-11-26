@@ -95,9 +95,11 @@ export async function generateNodeQuestions(input: {
   board: string;
   format: ExamFormat;
   level: 1 | 2;
+  questionCount?: 1 | 2 | 3;
 }): Promise<GeneratedQuestion[]> {
   const expectedValues = input.format === "CE" ? ["C", "E"] : input.format === "AD" ? ["A", "B", "C", "D"] : ["A", "B", "C", "D", "E"];
-  const count = expectedValues.length;
+  const choiceCount = expectedValues.length;
+  const questionCount = input.questionCount ?? 3;
   const result = await invokeLLM({
     model: "gpt-6-luna",
     maxCompletionTokens: 3000,
@@ -110,8 +112,8 @@ export async function generateNodeQuestions(input: {
         properties: {
           questions: {
             type: "array",
-            minItems: 3,
-            maxItems: 3,
+            minItems: questionCount,
+            maxItems: questionCount,
             items: generatedQuestionSchema,
           },
         },
@@ -121,11 +123,11 @@ export async function generateNodeQuestions(input: {
     messages: [
       {
         role: "system",
-        content: `Crie exatamente 3 questões originais para estudo de concurso público brasileiro. Não afirme que as questões são oficiais. Não invente artigos, números de lei, julgados ou prazos: se não tiver segurança factual, formule questão conceitual estritamente sobre o tópico informado. Nível ${input.level}: ${input.level === 1 ? "fundamentos e compreensão" : "aprofundamento, aplicação e pegadinhas mais exigentes"}. Banca: ${input.board}. Formato ${input.format}: use exatamente ${count} alternativas com valores ${expectedValues.join(", ")}. Para CE, o enunciado é uma afirmação e as opções são "Certo" e "Errado". Para AD/AE, o enunciado deve ser uma pergunta real e as alternativas devem responder a ela; não transforme uma afirmação de certo/errado em múltipla escolha. Cada questão deve ter uma única resposta correta, justificativa geral, pegadinha e justificativa individual para todas as alternativas. Em rationales, cada value/text deve corresponder exatamente à alternativa de mesmo value/text em choices e somente uma deve ter correct=true. Evite repetir o mesmo enunciado.`,
+        content: `Crie exatamente ${questionCount} questões originais para estudo de concurso público brasileiro. Não afirme que as questões são oficiais. Não invente artigos, números de lei, julgados ou prazos: se não tiver segurança factual, formule questão conceitual estritamente sobre o tópico informado. Nível ${input.level}: ${input.level === 1 ? "fundamentos e compreensão" : "aprofundamento, aplicação e pegadinhas mais exigentes"}. Banca: ${input.board}. Formato ${input.format}: use exatamente ${choiceCount} alternativas com valores ${expectedValues.join(", ")}. Para CE, o enunciado é uma afirmação e as opções são "Certo" e "Errado". Para AD/AE, o enunciado deve ser uma pergunta real e as alternativas devem responder a ela; não transforme uma afirmação de certo/errado em múltipla escolha. Cada questão deve ter uma única resposta correta, justificativa geral, pegadinha e justificativa individual para todas as alternativas. Em rationales, cada value/text deve corresponder exatamente à alternativa de mesmo value/text em choices e somente uma deve ter correct=true. Evite repetir o mesmo enunciado.`,
       },
       {
         role: "user",
-        content: `Disciplina: ${input.subject}\nTópico: ${input.topic}\nBanca: ${input.board}\nFormato: ${input.format}\nNível: ${input.level}\nRetorne três questões inéditas e consistentes.`,
+        content: `Disciplina: ${input.subject}\nTópico: ${input.topic}\nBanca: ${input.board}\nFormato: ${input.format}\nNível: ${input.level}\nRetorne ${questionCount} questões inéditas e consistentes.`,
       },
     ],
   });
@@ -137,19 +139,19 @@ export async function generateNodeQuestions(input: {
   } catch {
     throw new Error("A IA retornou questões em formato inválido.");
   }
-  const root = zQuestionsRoot.safeParse(parsed);
+  const root = zQuestionsRoot(questionCount).safeParse(parsed);
   if (!root.success) throw new Error("As questões geradas não passaram pela validação.");
   const expected = expectedValues;
   for (const question of root.data.questions) {
     const values = question.choices.map(choice => choice.value);
     const rationaleValues = question.rationales.map(item => item.value);
     if (
-      values.length !== count ||
+      values.length !== choiceCount ||
       expected.some(value => !values.includes(value)) ||
-      new Set(values).size !== count ||
+      new Set(values).size !== choiceCount ||
       question.correctAnswer.length === 0 ||
       !values.includes(question.correctAnswer) ||
-      rationaleValues.length !== count ||
+      rationaleValues.length !== choiceCount ||
       expected.some(value => !rationaleValues.includes(value)) ||
       question.rationales.filter(item => item.correct).length !== 1 ||
       question.rationales.filter(item => item.correct)[0]?.value !== question.correctAnswer ||
@@ -164,7 +166,8 @@ export async function generateNodeQuestions(input: {
   return root.data.questions;
 }
 
-const zQuestionsRoot = z.object({
+function zQuestionsRoot(questionCount: number) {
+  return z.object({
   questions: z.array(z.object({
     prompt: z.string().min(12).max(2000),
     difficulty: z.enum(["Fácil", "Médio", "Difícil"]),
@@ -181,8 +184,9 @@ const zQuestionsRoot = z.object({
       correct: z.boolean(),
       rationale: z.string().min(5).max(2000),
     }).strict()).min(2).max(5),
-  }).strict()).length(3),
-}).strict();
+  }).strict()).length(questionCount),
+  }).strict();
+}
 
 export async function verticalizeSyllabus(input: {
   text: string;
