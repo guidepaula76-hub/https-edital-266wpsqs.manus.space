@@ -55,7 +55,7 @@ jobs:
       - name: Aplicar migrações em MySQL descartável
         env:
           DATABASE_URL: mysql://root:root@127.0.0.1:3306/edital_test
-        run: pnpm exec drizzle-kit migrate
+        run: node scripts/ci-apply-migrations.mjs
       - name: Gerar build
         run: pnpm build
       - name: Gerar prévia da migração (sem conectar ao banco)
