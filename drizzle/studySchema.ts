@@ -1,6 +1,7 @@
 import {
   boolean,
   double,
+  foreignKey,
   index,
   int,
   json,
@@ -179,11 +180,16 @@ export const studyQuestionRewards = mysqlTable(
   {
     id: int("id").autoincrement().primaryKey(),
     userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
-    questionId: int("questionId").notNull().references(() => studyQuestions.id, { onDelete: "cascade" }),
+    questionId: int("questionId").notNull(),
     earnedAt: timestamp("earnedAt").defaultNow().notNull(),
   },
   table => [
     uniqueIndex("ultra_study_question_rewards_user_question_uq").on(table.userId, table.questionId),
+    foreignKey({
+      name: "ultra_study_question_rewards_question_fk",
+      columns: [table.questionId],
+      foreignColumns: [studyQuestions.id],
+    }).onDelete("cascade"),
   ],
 );
 
