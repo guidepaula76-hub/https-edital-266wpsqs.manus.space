@@ -1250,8 +1250,8 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "ultra_study_question_rewards_questionId_ultra_study_questions_id_fk": {
-          "name": "ultra_study_question_rewards_questionId_ultra_study_questions_id_fk",
+        "ultra_study_question_rewards_question_fk": {
+          "name": "ultra_study_question_rewards_question_fk",
           "tableFrom": "ultra_study_question_rewards",
           "tableTo": "ultra_study_questions",
           "columnsFrom": [
