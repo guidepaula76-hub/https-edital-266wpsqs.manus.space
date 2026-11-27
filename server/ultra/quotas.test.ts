@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   canGenerateQuestionBatch,
+  canVerticalize,
+  FREE_DAILY_VERTICALIZATION_LIMIT,
   hasExpectedQuestionCount,
   FREE_DAILY_NEW_QUESTION_LIMIT,
   getSaoPauloDayKey,
@@ -8,6 +10,15 @@ import {
 } from "./quotas";
 
 describe("daily Free question quota", () => {
+  it("limits edital verticalization to three per São Paulo day", () => {
+    expect(canVerticalize(0)).toBe(true);
+    expect(canVerticalize(2)).toBe(true);
+    expect(canVerticalize(3)).toBe(false);
+    expect(canVerticalize(-1)).toBe(false);
+    expect(canVerticalize(Number.NaN)).toBe(false);
+    expect(FREE_DAILY_VERTICALIZATION_LIMIT).toBe(3);
+  });
+
   it("allows whole batches while keeping the total at or below ten", () => {
     expect(canGenerateQuestionBatch(0)).toBe(true);
     expect(canGenerateQuestionBatch(6)).toBe(true);
