@@ -36,6 +36,7 @@ export default function Profile() {
   const [, navigate] = useLocation();
   const [edit, setEdit] = useState(false);
   const [name, setName] = useState(state.profile.name);
+  const [savingName, setSavingName] = useState(false);
   const complete = state.completedNodes.length;
   const totalNodes = state.nodes.length;
   const trailProgress = totalNodes ? Math.round((complete / totalNodes) * 100) : 0;
@@ -228,12 +229,19 @@ export default function Profile() {
       {edit && (
         <Modal title="Como podemos chamar você?" onClose={() => setEdit(false)}>
           <form
-            onSubmit={e => {
+            onSubmit={async e => {
               e.preventDefault();
-              if (!name.trim()) return;
-              updateProfile({ name: name.trim() });
-              setEdit(false);
-              toast.success("Seu perfil ficou mais seu.");
+              if (!name.trim() || savingName) return;
+              setSavingName(true);
+              try {
+                await updateProfile({ name: name.trim() });
+                setEdit(false);
+                toast.success("Seu perfil foi atualizado.");
+              } catch (error) {
+                toast.error(error instanceof Error ? error.message : "Não foi possível atualizar seu perfil.");
+              } finally {
+                setSavingName(false);
+              }
             }}
           >
             <div className="form-field">
@@ -244,10 +252,11 @@ export default function Profile() {
                 onChange={e => setName(e.target.value)}
                 maxLength={50}
                 required
+                disabled={savingName}
               />
             </div>
-            <MechButton type="submit" className="full-width">
-              Salvar nome <Check size={16} />
+            <MechButton type="submit" className="full-width" disabled={savingName}>
+              {savingName ? "Salvando…" : "Salvar nome"} {!savingName && <Check size={16} />}
             </MechButton>
           </form>
         </Modal>
