@@ -147,6 +147,7 @@ describe("AI question generation", () => {
     expect(result[0].correctAnswer).toBe("B");
     expect(result[0].rationales.filter(item => item.correct)).toHaveLength(1);
     expect(invokeLLM).toHaveBeenCalledWith(expect.objectContaining({
+      maxCompletionTokens: 7000,
       outputSchema: expect.objectContaining({ strict: true }),
       messages: expect.arrayContaining([
         expect.objectContaining({
