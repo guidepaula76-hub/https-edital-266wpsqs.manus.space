@@ -18,6 +18,8 @@ import { type ReactNode, useState } from "react";
 import { Brand, Frog, MechButton, Modal } from "./UI";
 import { useProgress } from "@/lib/progress";
 import Tutor from "./Tutor";
+import { useAuth } from "@/lib/auth";
+import { toast } from "sonner";
 import "./shell.css";
 
 export const navigation = [
@@ -31,7 +33,21 @@ export const navigation = [
 export default function Shell({ children }: { children: ReactNode }) {
   const [location, navigate] = useLocation();
   const { state } = useProgress();
+  const auth = useAuth();
   const [notifications, setNotifications] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const exit = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    try {
+      await auth.logout();
+      navigate("/login");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível sair da conta.");
+    } finally {
+      setLoggingOut(false);
+    }
+  };
   const active =
     navigation.find(item => item.path === location) ?? navigation[0];
   return (
@@ -65,8 +81,8 @@ export default function Shell({ children }: { children: ReactNode }) {
               faz uma grande diferença.
             </p>
           </div>
-          <button className="sidebar-exit" onClick={() => navigate("/")}>
-            <LogOut size={16} /> Voltar ao site
+          <button className="sidebar-exit" onClick={() => void exit()} disabled={loggingOut}>
+            <LogOut size={16} /> {loggingOut ? "Saindo…" : "Sair da conta"}
           </button>
           <span className="sidebar-demo">PROTÓTIPO · ETAPA 1</span>
         </div>
