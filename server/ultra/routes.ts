@@ -34,7 +34,7 @@ const pdfVerticalizationSchema = z.object({
   cargo: z.string().trim().min(2).max(180),
 }).strict();
 
-async function reserveVerticalization(userId: number): Promise<{ allowed: boolean; used: number }> {
+async function reserveVerticalization(userId: number): Promise<{ allowed: boolean; used: number; day: string }> {
   const db = await getDb();
   if (!db) throw new Error("DATABASE_UNAVAILABLE");
   const day = getSaoPauloDayKey();
@@ -48,17 +48,16 @@ async function reserveVerticalization(userId: number): Promise<{ allowed: boolea
       .limit(1)
       .for("update");
     const used = rows[0]?.verticalizations ?? 0;
-    if (!canVerticalize(used)) return { allowed: false, used };
+    if (!canVerticalize(used)) return { allowed: false, used, day };
     await tx.update(studyDailyUsage).set({ verticalizations: used + 1 })
       .where(and(eq(studyDailyUsage.userId, userId), eq(studyDailyUsage.day, day)));
-    return { allowed: true, used: used + 1 };
+    return { allowed: true, used: used + 1, day };
   });
 }
 
-async function releaseVerticalization(userId: number): Promise<void> {
+async function releaseVerticalization(userId: number, day: string): Promise<void> {
   const db = await getDb();
   if (!db) return;
-  const day = getSaoPauloDayKey();
   await db.transaction(async tx => {
     const rows = await tx.select({ verticalizations: studyDailyUsage.verticalizations })
       .from(studyDailyUsage)
@@ -114,7 +113,7 @@ async function saveVerticalizedDocument(input: {
     if (!documentId) throw new Error("DOCUMENT_SAVE_FAILED");
     return { ...syllabus, documentId, source: input.source };
   } catch (error) {
-    await releaseVerticalization(input.userId).catch(() => {});
+    await releaseVerticalization(input.userId, reservation.day).catch(() => {});
     throw error;
   }
 }
