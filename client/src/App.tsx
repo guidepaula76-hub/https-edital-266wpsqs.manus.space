@@ -26,14 +26,23 @@ function Loading() {
   );
 }
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, loading, error, refresh } = useAuth();
   const [, navigate] = useLocation();
 
   useEffect(() => {
-    if (!loading && !user) navigate("/login");
-  }, [loading, user, navigate]);
+    if (!loading && !user && !error) navigate("/login");
+  }, [loading, user, error, navigate]);
 
-  if (loading || !user) return <Loading />;
+  if (loading) return <Loading />;
+  if (error && !user) {
+    return (
+      <div className="app-loading" role="alert">
+        <p>Não foi possível verificar sua sessão. Sua conta não foi desconectada.</p>
+        <button type="button" onClick={() => void refresh()}>Tentar novamente</button>
+      </div>
+    );
+  }
+  if (!user) return <Loading />;
   return <>{children}</>;
 }
 function AppRoute({ children }: { children: React.ReactNode }) {
