@@ -136,6 +136,17 @@ describe("email/password authentication", () => {
     expect(await unknown.json()).toMatchObject({ error: "E-mail ou senha incorretos.", code: "INVALID_CREDENTIALS" });
   });
 
+  it("limits repeated login attempts from one address", async () => {
+    const base = await startTestApp();
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      const response = await post(base, "login", { email: "invalid", password: "x" });
+      expect(response.status).toBe(400);
+    }
+    const blocked = await post(base, "login", { email: "invalid", password: "x" });
+    expect(blocked.status).toBe(429);
+    expect(await blocked.json()).toMatchObject({ code: "RATE_LIMITED" });
+  });
+
   it("limits repeated signup attempts from one address", async () => {
     const base = await startTestApp();
     for (let attempt = 0; attempt < 5; attempt += 1) {

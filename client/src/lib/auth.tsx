@@ -22,6 +22,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
   const refresh = useCallback(async () => {
     const revision = ++request.current;
+    setLoading(true);
+    setError(null);
     try {
       const data = await api<AuthResponse>("/api/auth/me");
       if (revision === request.current) apply(data);

@@ -1,0 +1,72 @@
+name: Validar projeto
+
+on:
+  push:
+    branches:
+      - main
+      - "fix/**"
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validar-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validar:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: edital_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+      - name: Configurar pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.18.0
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Instalar dependências
+        run: pnpm install --frozen-lockfile
+      - name: Verificar TypeScript
+        run: pnpm check
+      - name: Executar testes
+        run: pnpm test
+      - name: Aplicar migrações em MySQL descartável
+        env:
+          DATABASE_URL: mysql://root:root@127.0.0.1:3306/edital_test
+        run: node scripts/ci-apply-migrations.mjs
+      - name: Gerar build
+        run: pnpm build
+      - name: Gerar prévia da migração (sem conectar ao banco)
+        env:
+          DATABASE_URL: mysql://preview:preview@127.0.0.1:3306/preview
+        run: pnpm exec drizzle-kit generate --name study_tables
+      - name: Guardar arquivos da migração para revisão
+        uses: actions/upload-artifact@v4
+        with:
+          name: drizzle-study-migration-preview
+          path: |
+            drizzle/*.sql
+            drizzle/meta/*.json
+          if-no-files-found: error

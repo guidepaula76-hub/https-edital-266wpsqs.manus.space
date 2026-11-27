@@ -45,22 +45,36 @@ function publicUser(user: StoredSession["user"]) {
 function noStore(res: Response) {
   res.setHeader("Cache-Control", "no-store");
 }
-function requestIsSameOrigin(req: Request): boolean {
+export function requestIsSameOrigin(req: Request): boolean {
   const fetchSite = req.get("Sec-Fetch-Site");
   if (fetchSite && fetchSite !== "same-origin" && fetchSite !== "none") return false;
+
+  // SameSite=None is required by the hosted preview iframe. When browsers send
+  // Origin, bind state-changing requests to the exact origin serving this app.
+  const origin = req.get("Origin");
+  if (origin) {
+    try {
+      const parsedOrigin = new URL(origin);
+      const requestOrigin = new URL(`${req.protocol}://${req.get("host")}`).origin;
+      if (parsedOrigin.origin !== origin || parsedOrigin.origin !== requestOrigin) return false;
+    } catch {
+      return false;
+    }
+  }
+
   return req.get("X-Ultra-Request") === "1" && Boolean(req.is("application/json"));
 }
-function sendError(res: Response, status: number, error: string, code: string) {
+export function sendError(res: Response, status: number, error: string, code: string) {
   return res.status(status).json({ error, code });
 }
-function csrfMatches(expected: string, received: string | undefined): boolean {
+export function csrfMatches(expected: string, received: string | undefined): boolean {
   if (!received) return false;
   const a = Buffer.from(expected);
   const b = Buffer.from(received);
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-async function readSession(req: Request, store: AuthStore): Promise<{ token: string; tokenHash: string; session: StoredSession } | null> {
+export async function readSession(req: Request, store: AuthStore): Promise<{ token: string; tokenHash: string; session: StoredSession } | null> {
   const token = parseCookie(req.headers.cookie ?? "")[SESSION_COOKIE];
   if (!token || token.length > 128) return null;
   const tokenHash = createHash("sha256").update(token).digest("hex");

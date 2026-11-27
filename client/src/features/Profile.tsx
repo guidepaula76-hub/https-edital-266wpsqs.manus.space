@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import {
-  UserRound,
   Pencil,
   Flame,
   Gem,
@@ -11,8 +10,6 @@ import {
   VolumeX,
   ArrowRight,
   CalendarDays,
-  LogOut,
-  RotateCcw,
   Check,
   ShieldCheck,
   BookX,
@@ -33,24 +30,16 @@ import {
 } from "@/components/ultra/UI";
 import Install from "@/components/ultra/Install";
 import "./profile.css";
-const errors: Record<string, { subject: string; title: string }> = {
-  "demo-portugues-2": {
-    subject: "Língua Portuguesa",
-    title: "Emprego de crase e regência verbal",
-  },
-  "demo-admin-1": {
-    subject: "Direito Administrativo",
-    title: "Princípios da administração pública",
-  },
-};
 export default function Profile() {
-  const { state, updateProfile, setSound, resetProgress } = useProgress();
+  const { state, updateProfile, setSound } = useProgress();
   const { theme, toggleTheme } = useTheme();
   const [, navigate] = useLocation();
   const [edit, setEdit] = useState(false);
   const [name, setName] = useState(state.profile.name);
-  const [confirmReset, setConfirmReset] = useState(false);
+  const [savingName, setSavingName] = useState(false);
   const complete = state.completedNodes.length;
+  const totalNodes = state.nodes.length;
+  const trailProgress = totalNodes ? Math.round((complete / totalNodes) * 100) : 0;
   return (
     <>
       <SectionHeading
@@ -127,9 +116,9 @@ export default function Profile() {
             </p>
             <div className="row-between">
               <span>Progresso da trilha</span>
-              <strong>{Math.round((complete / 12) * 100)}%</strong>
+              <strong>{trailProgress}%</strong>
             </div>
-            <ProgressBar value={(complete / 12) * 100} color="purple" />
+            <ProgressBar value={trailProgress} color="purple" />
             <div className="goal-details">
               <span>
                 <CalendarDays size={14} />{" "}
@@ -153,30 +142,14 @@ export default function Profile() {
             </p>
             {state.errorIds.length ? (
               <div className="error-list">
-                {state.errorIds.map((id, i) => (
-                  <div key={id}>
-                    <span className="error-number">
-                      {String(i + 1).padStart(2, "0")}
-                    </span>
+                {state.errors.map((entry, i) => (
+                  <div key={entry.questionId}>
+                    <span className="error-number">{String(i + 1).padStart(2, "0")}</span>
                     <div>
-                      <strong>
-                        {errors[id]?.title ??
-                          "Questão para refazer e consolidar"}
-                      </strong>
-                      <small>
-                        {errors[id]?.subject ?? "Prática da sua banca"} ·
-                        revisão recomendada
-                      </small>
+                      <strong>{entry.topic}</strong>
+                      <small>{entry.subject} · {entry.errorCount} {entry.errorCount === 1 ? "erro" : "erros"} · {entry.board}</small>
                     </div>
-                    <MechButton
-                      small
-                      color="white"
-                      onClick={() =>
-                        navigate(
-                          `/app/questoes?error=${encodeURIComponent(id)}`
-                        )
-                      }
-                    >
+                    <MechButton small color="white" onClick={() => navigate("/app/questoes?error=" + entry.questionId)}>
                       Refazer <ArrowRight size={13} />
                     </MechButton>
                   </div>
@@ -234,7 +207,7 @@ export default function Profile() {
             <div className="preferences-note">
               <ShieldCheck size={15} />
               <p>
-                Suas preferências e conquistas ficam apenas neste dispositivo.
+                Suas preferências e conquistas são vinculadas à sua conta e carregadas do servidor.
               </p>
             </div>
           </Card>
@@ -249,31 +222,26 @@ export default function Profile() {
             </p>
             <Install small />
           </Card>
-          <Card className="profile-demo-card">
-            <Tag tone="purple">ETAPA 1 · DEMONSTRAÇÃO</Tag>
-            <p>
-              Este perfil não é uma conta real. O ranking, o tutor e as
-              avaliações de redação são fictícios.
-            </p>
-            <button onClick={() => setConfirmReset(true)}>
-              <RotateCcw size={13} /> Restaurar demonstração
-            </button>
-            <button onClick={() => navigate("/")}>
-              <LogOut size={13} /> Voltar ao site
-            </button>
-          </Card>
+
         </aside>
       </div>
       <DemoNote />
       {edit && (
         <Modal title="Como podemos chamar você?" onClose={() => setEdit(false)}>
           <form
-            onSubmit={e => {
+            onSubmit={async e => {
               e.preventDefault();
-              if (!name.trim()) return;
-              updateProfile({ name: name.trim() });
-              setEdit(false);
-              toast.success("Seu perfil ficou mais seu.");
+              if (!name.trim() || savingName) return;
+              setSavingName(true);
+              try {
+                await updateProfile({ name: name.trim() });
+                setEdit(false);
+                toast.success("Seu perfil foi atualizado.");
+              } catch (error) {
+                toast.error(error instanceof Error ? error.message : "Não foi possível atualizar seu perfil.");
+              } finally {
+                setSavingName(false);
+              }
             }}
           >
             <div className="form-field">
@@ -284,41 +252,16 @@ export default function Profile() {
                 onChange={e => setName(e.target.value)}
                 maxLength={50}
                 required
+                disabled={savingName}
               />
             </div>
-            <MechButton type="submit" className="full-width">
-              Salvar nome <Check size={16} />
+            <MechButton type="submit" className="full-width" disabled={savingName}>
+              {savingName ? "Salvando…" : "Salvar nome"} {!savingName && <Check size={16} />}
             </MechButton>
           </form>
         </Modal>
       )}
-      {confirmReset && (
-        <Modal
-          title="Recomeçar a demonstração?"
-          onClose={() => setConfirmReset(false)}
-        >
-          <p className="muted">
-            Esta ação restaura o perfil de exemplo, o XP e a trilha neste
-            dispositivo. As preferências de tema são mantidas. Não afeta contas
-            reais.
-          </p>
-          <div className="reset-actions">
-            <MechButton color="white" onClick={() => setConfirmReset(false)}>
-              Manter progresso
-            </MechButton>
-            <MechButton
-              color="coral"
-              onClick={() => {
-                resetProgress();
-                setConfirmReset(false);
-                toast.success("Demonstração restaurada.");
-              }}
-            >
-              Restaurar
-            </MechButton>
-          </div>
-        </Modal>
-      )}
+
     </>
   );
 }

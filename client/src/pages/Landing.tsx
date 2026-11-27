@@ -28,11 +28,11 @@ import "./landing.css";
 const faqs = [
   [
     "Posso estudar para qualquer concurso?",
-    "Sim. A estrutura permite escolher concurso, cargo, nível e banca, além de organizar os tópicos do edital. Nesta etapa, o banco de questões e os planos são exemplos demonstrativos.",
+    "Sim. Você pode informar concurso, cargo, nível e banca e organizar os tópicos do edital. As questões são geradas por IA para estudo e não substituem um banco oficial de questões; o banco oficial ainda está pendente.",
   ],
   [
     "Como funciona a trilha de estudos?",
-    "Você avança por unidades curtas. Cada sessão concluída soma XP e libera o próximo tópico. Depois de concluir o Nível 1, o Nível 2 é liberado com os mesmos temas e questões mais difíceis.",
+    "Você avança por tópicos em duas etapas: fundamentos e aprofundamento. O servidor registra suas respostas; o primeiro acerto de cada questão concede 10 XP. A liberação das próximas etapas depende do progresso registrado na trilha.",
   ],
   [
     "É possível instalar no celular?",
@@ -40,7 +40,7 @@ const faqs = [
   ],
   [
     "Os recursos de IA já estão conectados?",
-    "Esta é a Etapa 1: um protótipo completo de frontend. Tutor, correção, login e ranking usam demonstrações locais, sem IA real, autenticação ou dados de outros usuários.",
+    "O cadastro e o login por e-mail e senha, a trilha personalizada, o progresso e a geração de questões por IA já estão conectados ao servidor. O login Google, o ranking real, o banco oficial de questões e alguns conteúdos complementares ainda não estão disponíveis ou permanecem demonstrativos.",
   ],
 ];
 export default function Landing() {
@@ -102,8 +102,8 @@ export default function Landing() {
               <MechButton onClick={() => navigate("/cadastro")}>
                 Começar Agora <ArrowRight size={18} />
               </MechButton>
-              <MechButton color="white" onClick={() => navigate("/app")}>
-                Explorar a plataforma
+              <MechButton color="white" onClick={() => navigate("/login")}>
+                Entrar na plataforma
               </MechButton>
             </div>
             <div className="hero-confidence">

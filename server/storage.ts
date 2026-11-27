@@ -4,6 +4,25 @@
 
 import { ENV } from "./_core/env";
 
+export function validateStorageUrl(value: unknown): string {
+  if (typeof value !== "string" || value.length === 0) {
+    throw new Error("Storage returned an empty URL");
+  }
+
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new Error("Storage returned an invalid URL");
+  }
+
+  if (parsed.protocol !== "https:" || !parsed.hostname || parsed.username || parsed.password) {
+    throw new Error("Storage URL must use HTTPS and must not contain credentials");
+  }
+
+  return parsed.toString();
+}
+
 function getForgeConfig() {
   const forgeUrl = ENV.forgeApiUrl;
   const forgeKey = ENV.forgeApiKey;
@@ -14,7 +33,8 @@ function getForgeConfig() {
     );
   }
 
-  return { forgeUrl: forgeUrl.replace(/\/+$/, ""), forgeKey };
+  const secureForgeUrl = validateStorageUrl(forgeUrl).replace(/\/+$/, "");
+  return { forgeUrl: secureForgeUrl, forgeKey };
 }
 
 function normalizeKey(relKey: string): string {
@@ -42,6 +62,7 @@ export async function storagePut(
 
   const presignResp = await fetch(presignUrl, {
     headers: { Authorization: `Bearer ${forgeKey}` },
+    redirect: "error",
   });
 
   if (!presignResp.ok) {
@@ -49,8 +70,8 @@ export async function storagePut(
     throw new Error(`Storage presign failed (${presignResp.status}): ${msg}`);
   }
 
-  const { url: s3Url } = (await presignResp.json()) as { url: string };
-  if (!s3Url) throw new Error("Forge returned empty presign URL");
+  const { url: returnedUrl } = (await presignResp.json()) as { url: string };
+  const s3Url = validateStorageUrl(returnedUrl);
 
   // 2. PUT file directly to S3
   const blob =
@@ -62,6 +83,7 @@ export async function storagePut(
     method: "PUT",
     headers: { "Content-Type": contentType },
     body: blob,
+    redirect: "error",
   });
 
   if (!uploadResp.ok) {
@@ -85,6 +107,7 @@ export async function storageGetSignedUrl(relKey: string): Promise<string> {
 
   const resp = await fetch(getUrl, {
     headers: { Authorization: `Bearer ${forgeKey}` },
+    redirect: "error",
   });
 
   if (!resp.ok) {
@@ -93,6 +116,5 @@ export async function storageGetSignedUrl(relKey: string): Promise<string> {
   }
 
   const { url } = (await resp.json()) as { url: string };
-  if (!url) throw new Error("Storage did not return a download URL");
-  return url;
+  return validateStorageUrl(url);
 }

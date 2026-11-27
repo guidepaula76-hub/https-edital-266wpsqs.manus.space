@@ -1,6 +1,13 @@
 import { z } from "zod";
 
 export const examFormatSchema = z.enum(["CE", "AD", "AE"]);
+const examDateSchema = z.string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/)
+  .refine(value => {
+    const parsed = new Date(value);
+    return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+  }, "Informe uma data de prova válida.")
+  .or(z.literal(""));
 export type ExamFormat = z.infer<typeof examFormatSchema>;
 export const BOARDS = ["Cebraspe", "FGV", "FCC", "Vunesp", "Cesgranrio", "IBFC", "IBAM", "Quadrix", "Outra"] as const;
 export function boardFormat(board: string): ExamFormat {
@@ -24,7 +31,7 @@ export const goalInputSchema = z.object({
   banca: z.string().trim().min(2).max(100),
   format: examFormatSchema,
   hours: z.number().min(0.5).max(12),
-  examDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).or(z.literal("")),
+  examDate: examDateSchema,
   disciplines: z.array(disciplineSchema).min(1).max(30),
   documentId: z.number().int().positive().nullable(),
 }).strict().refine(s => s.disciplines.reduce((n, d) => n + d.topics.length, 0) <= 150, "Use até 150 tópicos por edital.");

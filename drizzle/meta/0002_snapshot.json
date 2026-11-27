@@ -1,0 +1,1616 @@
+{
+  "version": "5",
+  "dialect": "mysql",
+  "id": "62bb2dc3-b71c-4595-a4ee-3ee2a74cf28f",
+  "prevId": "678e9ad4-91e4-49c0-bcb4-19f02ac5cadc",
+  "tables": {
+    "ultra_auth_credentials": {
+      "name": "ultra_auth_credentials",
+      "columns": {
+        "userId": {
+          "name": "userId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "emailNormalized": {
+          "name": "emailNormalized",
+          "type": "varchar(320)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "passwordHash": {
+          "name": "passwordHash",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "ultra_auth_credentials_userId_users_id_fk": {
+          "name": "ultra_auth_credentials_userId_users_id_fk",
+          "tableFrom": "ultra_auth_credentials",
+          "tableTo": "users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "ultra_auth_credentials_userId": {
+          "name": "ultra_auth_credentials_userId",
+          "columns": [
+            "userId"
+          ]
+        }
+      },
+      "uniqueConstraints": {
+        "ultra_auth_credentials_email_uq": {
+          "name": "ultra_auth_credentials_email_uq",
+          "columns": [
+            "emailNormalized"
+          ]
+        }
+      },
+      "checkConstraint": {}
+    },
+    "ultra_auth_sessions": {
+      "name": "ultra_auth_sessions",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "tokenHash": {
+          "name": "tokenHash",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "csrfToken": {
+          "name": "csrfToken",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "expiresAt": {
+          "name": "expiresAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "ultra_auth_sessions_user_id_idx": {
+          "name": "ultra_auth_sessions_user_id_idx",
+          "columns": [
+            "userId"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "ultra_auth_sessions_userId_users_id_fk": {
+          "name": "ultra_auth_sessions_userId_users_id_fk",
+          "tableFrom": "ultra_auth_sessions",
+          "tableTo": "users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "ultra_auth_sessions_id": {
+          "name": "ultra_auth_sessions_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {
+        "ultra_auth_sessions_token_hash_uq": {
+          "name": "ultra_auth_sessions_token_hash_uq",
+          "columns": [
+            "tokenHash"
+          ]
+        }
+      },
+      "checkConstraint": {}
+    },
+    "ultra_study_answers": {
+      "name": "ultra_study_answers",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "questionId": {
+          "name": "questionId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "nodeId": {
+          "name": "nodeId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "subject": {
+          "name": "subject",
+          "type": "varchar(140)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "topic": {
+          "name": "topic",
+          "type": "varchar(300)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "requestId": {
+          "name": "requestId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "value": {
+          "name": "value",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "correct": {
+          "name": "correct",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "blank": {
+          "name": "blank",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "xpAwarded": {
+          "name": "xpAwarded",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "nodeCompleted": {
+          "name": "nodeCompleted",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "ultra_study_answers_user_request_uq": {
+          "name": "ultra_study_answers_user_request_uq",
+          "columns": [
+            "userId",
+            "requestId"
+          ],
+          "isUnique": true
+        },
+        "ultra_study_answers_user_node_idx": {
+          "name": "ultra_study_answers_user_node_idx",
+          "columns": [
+            "userId",
+            "nodeId"
+          ],
+          "isUnique": false
+        },
+        "ultra_study_answers_user_question_idx": {
+          "name": "ultra_study_answers_user_question_idx",
+          "columns": [
+            "userId",
+            "questionId"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "ultra_study_answers_userId_users_id_fk": {
+          "name": "ultra_study_answers_userId_users_id_fk",
+          "tableFrom": "ultra_study_answers",
+          "tableTo": "users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "ultra_study_answers_questionId_ultra_study_questions_id_fk": {
+          "name": "ultra_study_answers_questionId_ultra_study_questions_id_fk",
+          "tableFrom": "ultra_study_answers",
+          "tableTo": "ultra_study_questions",
+          "columnsFrom": [
+            "questionId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "ultra_study_answers_nodeId_ultra_study_nodes_id_fk": {
+          "name": "ultra_study_answers_nodeId_ultra_study_nodes_id_fk",
+          "tableFrom": "ultra_study_answers",
+          "tableTo": "ultra_study_nodes",
+          "columnsFrom": [
+            "nodeId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "ultra_study_answers_id": {
+          "name": "ultra_study_answers_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "ultra_study_daily_usage": {
+      "name": "ultra_study_daily_usage",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "day": {
+          "name": "day",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "verticalizations": {
+          "name": "verticalizations",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "questionGenerations": {
+          "name": "questionGenerations",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "ultra_study_daily_usage_user_day_uq": {
+          "name": "ultra_study_daily_usage_user_day_uq",
+          "columns": [
+            "userId",
+            "day"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "ultra_study_daily_usage_userId_users_id_fk": {
+          "name": "ultra_study_daily_usage_userId_users_id_fk",
+          "tableFrom": "ultra_study_daily_usage",
+          "tableTo": "users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "ultra_study_daily_usage_id": {
+          "name": "ultra_study_daily_usage_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "ultra_study_disciplines": {
+      "name": "ultra_study_disciplines",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "goalId": {
+          "name": "goalId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "position": {
+          "name": "position",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(140)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "ultra_study_disciplines_goal_position_uq": {
+          "name": "ultra_study_disciplines_goal_position_uq",
+          "columns": [
+            "userId",
+            "goalId",
+            "position"
+          ],
+          "isUnique": true
+        },
+        "ultra_study_disciplines_goal_idx": {
+          "name": "ultra_study_disciplines_goal_idx",
+          "columns": [
+            "userId",
+            "goalId"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "ultra_study_disciplines_userId_users_id_fk": {
+          "name": "ultra_study_disciplines_userId_users_id_fk",
+          "tableFrom": "ultra_study_disciplines",
+          "tableTo": "users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "ultra_study_disciplines_goalId_ultra_study_goals_id_fk": {
+          "name": "ultra_study_disciplines_goalId_ultra_study_goals_id_fk",
+          "tableFrom": "ultra_study_disciplines",
+          "tableTo": "ultra_study_goals",
+          "columnsFrom": [
+            "goalId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "ultra_study_disciplines_id": {
+          "name": "ultra_study_disciplines_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "ultra_study_documents": {
+      "name": "ultra_study_documents",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(180)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "source": {
+          "name": "source",
+          "type": "enum('text','pdf')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "rawText": {
+          "name": "rawText",
+          "type": "mediumtext",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "storageKey": {
+          "name": "storageKey",
+          "type": "varchar(512)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "sizeBytes": {
+          "name": "sizeBytes",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "ultra_study_documents_user_created_idx": {
+          "name": "ultra_study_documents_user_created_idx",
+          "columns": [
+            "userId",
+            "createdAt"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "ultra_study_documents_userId_users_id_fk": {
+          "name": "ultra_study_documents_userId_users_id_fk",
+          "tableFrom": "ultra_study_documents",
+          "tableTo": "users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "ultra_study_documents_id": {
+          "name": "ultra_study_documents_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "ultra_study_error_entries": {
+      "name": "ultra_study_error_entries",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "questionId": {
+          "name": "questionId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "nodeId": {
+          "name": "nodeId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "errorCount": {
+          "name": "errorCount",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1
+        },
+        "lastErrorAt": {
+          "name": "lastErrorAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "resolvedAt": {
+          "name": "resolvedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "ultra_study_errors_user_question_uq": {
+          "name": "ultra_study_errors_user_question_uq",
+          "columns": [
+            "userId",
+            "questionId"
+          ],
+          "isUnique": true
+        },
+        "ultra_study_errors_user_pending_idx": {
+          "name": "ultra_study_errors_user_pending_idx",
+          "columns": [
+            "userId",
+            "resolvedAt",
+            "lastErrorAt"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "ultra_study_error_entries_userId_users_id_fk": {
+          "name": "ultra_study_error_entries_userId_users_id_fk",
+          "tableFrom": "ultra_study_error_entries",
+          "tableTo": "users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "ultra_study_error_entries_questionId_ultra_study_questions_id_fk": {
+          "name": "ultra_study_error_entries_questionId_ultra_study_questions_id_fk",
+          "tableFrom": "ultra_study_error_entries",
+          "tableTo": "ultra_study_questions",
+          "columnsFrom": [
+            "questionId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "ultra_study_error_entries_nodeId_ultra_study_nodes_id_fk": {
+          "name": "ultra_study_error_entries_nodeId_ultra_study_nodes_id_fk",
+          "tableFrom": "ultra_study_error_entries",
+          "tableTo": "ultra_study_nodes",
+          "columnsFrom": [
+            "nodeId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "ultra_study_error_entries_id": {
+          "name": "ultra_study_error_entries_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "ultra_study_goals": {
+      "name": "ultra_study_goals",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "documentId": {
+          "name": "documentId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "concurso": {
+          "name": "concurso",
+          "type": "varchar(180)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "cargo": {
+          "name": "cargo",
+          "type": "varchar(180)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "nivel": {
+          "name": "nivel",
+          "type": "enum('Fundamental','Médio','Superior')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "banca": {
+          "name": "banca",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "format": {
+          "name": "format",
+          "type": "enum('CE','AD','AE')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "hours": {
+          "name": "hours",
+          "type": "double",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "examDate": {
+          "name": "examDate",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "ultra_study_goals_user_created_idx": {
+          "name": "ultra_study_goals_user_created_idx",
+          "columns": [
+            "userId",
+            "createdAt"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "ultra_study_goals_userId_users_id_fk": {
+          "name": "ultra_study_goals_userId_users_id_fk",
+          "tableFrom": "ultra_study_goals",
+          "tableTo": "users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "ultra_study_goals_documentId_ultra_study_documents_id_fk": {
+          "name": "ultra_study_goals_documentId_ultra_study_documents_id_fk",
+          "tableFrom": "ultra_study_goals",
+          "tableTo": "ultra_study_documents",
+          "columnsFrom": [
+            "documentId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "ultra_study_goals_id": {
+          "name": "ultra_study_goals_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "ultra_study_nodes": {
+      "name": "ultra_study_nodes",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "goalId": {
+          "name": "goalId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "disciplineId": {
+          "name": "disciplineId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "level": {
+          "name": "level",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "position": {
+          "name": "position",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "topicPosition": {
+          "name": "topicPosition",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "subject": {
+          "name": "subject",
+          "type": "varchar(140)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "topic": {
+          "name": "topic",
+          "type": "varchar(300)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "completedAt": {
+          "name": "completedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "generationLockId": {
+          "name": "generationLockId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "generationLockExpiresAt": {
+          "name": "generationLockExpiresAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "ultra_study_nodes_goal_level_position_uq": {
+          "name": "ultra_study_nodes_goal_level_position_uq",
+          "columns": [
+            "userId",
+            "goalId",
+            "level",
+            "position"
+          ],
+          "isUnique": true
+        },
+        "ultra_study_nodes_goal_discipline_topic_level_uq": {
+          "name": "ultra_study_nodes_goal_discipline_topic_level_uq",
+          "columns": [
+            "userId",
+            "goalId",
+            "disciplineId",
+            "topicPosition",
+            "level"
+          ],
+          "isUnique": true
+        },
+        "ultra_study_nodes_goal_idx": {
+          "name": "ultra_study_nodes_goal_idx",
+          "columns": [
+            "userId",
+            "goalId",
+            "level",
+            "position"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "ultra_study_nodes_userId_users_id_fk": {
+          "name": "ultra_study_nodes_userId_users_id_fk",
+          "tableFrom": "ultra_study_nodes",
+          "tableTo": "users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "ultra_study_nodes_goalId_ultra_study_goals_id_fk": {
+          "name": "ultra_study_nodes_goalId_ultra_study_goals_id_fk",
+          "tableFrom": "ultra_study_nodes",
+          "tableTo": "ultra_study_goals",
+          "columnsFrom": [
+            "goalId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "ultra_study_nodes_disciplineId_ultra_study_disciplines_id_fk": {
+          "name": "ultra_study_nodes_disciplineId_ultra_study_disciplines_id_fk",
+          "tableFrom": "ultra_study_nodes",
+          "tableTo": "ultra_study_disciplines",
+          "columnsFrom": [
+            "disciplineId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "ultra_study_nodes_id": {
+          "name": "ultra_study_nodes_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "ultra_study_preferences": {
+      "name": "ultra_study_preferences",
+      "columns": {
+        "userId": {
+          "name": "userId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "activeGoalId": {
+          "name": "activeGoalId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "sound": {
+          "name": "sound",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "dailyGoal": {
+          "name": "dailyGoal",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 50
+        },
+        "writing": {
+          "name": "writing",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "('')"
+        },
+        "scheduleRevision": {
+          "name": "scheduleRevision",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "xp": {
+          "name": "xp",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "streak": {
+          "name": "streak",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "lastStudyDay": {
+          "name": "lastStudyDay",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "''"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "ultra_study_preferences_userId_users_id_fk": {
+          "name": "ultra_study_preferences_userId_users_id_fk",
+          "tableFrom": "ultra_study_preferences",
+          "tableTo": "users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "ultra_study_preferences_activeGoalId_ultra_study_goals_id_fk": {
+          "name": "ultra_study_preferences_activeGoalId_ultra_study_goals_id_fk",
+          "tableFrom": "ultra_study_preferences",
+          "tableTo": "ultra_study_goals",
+          "columnsFrom": [
+            "activeGoalId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "ultra_study_preferences_userId": {
+          "name": "ultra_study_preferences_userId",
+          "columns": [
+            "userId"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "ultra_study_question_rewards": {
+      "name": "ultra_study_question_rewards",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "questionId": {
+          "name": "questionId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "earnedAt": {
+          "name": "earnedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "ultra_study_question_rewards_user_question_uq": {
+          "name": "ultra_study_question_rewards_user_question_uq",
+          "columns": [
+            "userId",
+            "questionId"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "ultra_study_question_rewards_userId_users_id_fk": {
+          "name": "ultra_study_question_rewards_userId_users_id_fk",
+          "tableFrom": "ultra_study_question_rewards",
+          "tableTo": "users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "ultra_study_question_rewards_question_fk": {
+          "name": "ultra_study_question_rewards_question_fk",
+          "tableFrom": "ultra_study_question_rewards",
+          "tableTo": "ultra_study_questions",
+          "columnsFrom": [
+            "questionId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "ultra_study_question_rewards_id": {
+          "name": "ultra_study_question_rewards_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "ultra_study_questions": {
+      "name": "ultra_study_questions",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "goalId": {
+          "name": "goalId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "nodeId": {
+          "name": "nodeId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "subject": {
+          "name": "subject",
+          "type": "varchar(140)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "topic": {
+          "name": "topic",
+          "type": "varchar(300)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "board": {
+          "name": "board",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "format": {
+          "name": "format",
+          "type": "enum('CE','AD','AE')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "level": {
+          "name": "level",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "difficulty": {
+          "name": "difficulty",
+          "type": "enum('Fácil','Médio','Difícil')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "prompt": {
+          "name": "prompt",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "promptHash": {
+          "name": "promptHash",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "choices": {
+          "name": "choices",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "correctAnswer": {
+          "name": "correctAnswer",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "explanation": {
+          "name": "explanation",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "trap": {
+          "name": "trap",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "rationales": {
+          "name": "rationales",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "source": {
+          "name": "source",
+          "type": "enum('ai','sample')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'ai'"
+        },
+        "generationId": {
+          "name": "generationId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "ultra_study_questions_user_node_prompt_hash_uq": {
+          "name": "ultra_study_questions_user_node_prompt_hash_uq",
+          "columns": [
+            "userId",
+            "nodeId",
+            "promptHash"
+          ],
+          "isUnique": true
+        },
+        "ultra_study_questions_user_generation_order_uq": {
+          "name": "ultra_study_questions_user_generation_order_uq",
+          "columns": [
+            "userId",
+            "generationId",
+            "id"
+          ],
+          "isUnique": true
+        },
+        "ultra_study_questions_node_idx": {
+          "name": "ultra_study_questions_node_idx",
+          "columns": [
+            "userId",
+            "nodeId",
+            "createdAt"
+          ],
+          "isUnique": false
+        },
+        "ultra_study_questions_goal_idx": {
+          "name": "ultra_study_questions_goal_idx",
+          "columns": [
+            "userId",
+            "goalId"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "ultra_study_questions_userId_users_id_fk": {
+          "name": "ultra_study_questions_userId_users_id_fk",
+          "tableFrom": "ultra_study_questions",
+          "tableTo": "users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "ultra_study_questions_goalId_ultra_study_goals_id_fk": {
+          "name": "ultra_study_questions_goalId_ultra_study_goals_id_fk",
+          "tableFrom": "ultra_study_questions",
+          "tableTo": "ultra_study_goals",
+          "columnsFrom": [
+            "goalId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "ultra_study_questions_nodeId_ultra_study_nodes_id_fk": {
+          "name": "ultra_study_questions_nodeId_ultra_study_nodes_id_fk",
+          "tableFrom": "ultra_study_questions",
+          "tableTo": "ultra_study_nodes",
+          "columnsFrom": [
+            "nodeId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "ultra_study_questions_id": {
+          "name": "ultra_study_questions_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "users": {
+      "name": "users",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "openId": {
+          "name": "openId",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar(320)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "loginMethod": {
+          "name": "loginMethod",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "role": {
+          "name": "role",
+          "type": "enum('user','admin')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'user'"
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        },
+        "lastSignedIn": {
+          "name": "lastSignedIn",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "users_id": {
+          "name": "users_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {
+        "users_openId_unique": {
+          "name": "users_openId_unique",
+          "columns": [
+            "openId"
+          ]
+        }
+      },
+      "checkConstraint": {}
+    }
+  },
+  "views": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "tables": {},
+    "indexes": {}
+  }
+}
