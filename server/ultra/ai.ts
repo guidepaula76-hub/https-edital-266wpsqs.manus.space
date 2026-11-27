@@ -102,7 +102,7 @@ export async function generateNodeQuestions(input: {
   const questionCount = input.questionCount ?? 3;
   const result = await invokeLLM({
     model: "gpt-6-luna",
-    maxCompletionTokens: 3000,
+    maxCompletionTokens: 7000,
     outputSchema: {
       name: "ultra_node_questions",
       strict: true,
@@ -137,7 +137,11 @@ export async function generateNodeQuestions(input: {
       },
     ],
   });
-  const raw = result.choices?.[0]?.message?.content;
+  const responseChoice = result.choices?.[0];
+  if (responseChoice?.finish_reason === "length") {
+    throw new Error("A resposta da IA foi interrompida por limite de tokens. Tente novamente.");
+  }
+  const raw = responseChoice?.message?.content;
   if (!raw) throw new Error("A IA não retornou questões.");
   let parsed: unknown;
   try {
