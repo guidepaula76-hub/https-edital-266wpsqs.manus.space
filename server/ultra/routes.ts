@@ -19,7 +19,7 @@ import { answerInputSchema, goalInputSchema, type AnswerFeedback, type ErrorEntr
 import { getDb } from "../db";
 import { requireMutation, requireSession, type UltraRequest } from "./auth";
 import { generateNodeQuestions, verticalizeSyllabus } from "./ai";
-import { canGenerateQuestionBatch, hasExpectedQuestionCount, FREE_DAILY_NEW_QUESTION_LIMIT, getSaoPauloDayKey, NEW_QUESTION_BATCH_SIZE } from "./quotas";
+import { canGenerateQuestionBatch, canVerticalize, hasExpectedQuestionCount, FREE_DAILY_NEW_QUESTION_LIMIT, FREE_DAILY_VERTICALIZATION_LIMIT, getSaoPauloDayKey, NEW_QUESTION_BATCH_SIZE } from "./quotas";
 import { storageGetSignedUrl, storagePut } from "../storage";
 
 const textVerticalizationSchema = z.object({
@@ -34,6 +34,45 @@ const pdfVerticalizationSchema = z.object({
   cargo: z.string().trim().min(2).max(180),
 }).strict();
 
+async function reserveVerticalization(userId: number): Promise<{ allowed: boolean; used: number }> {
+  const db = await getDb();
+  if (!db) throw new Error("DATABASE_UNAVAILABLE");
+  const day = getSaoPauloDayKey();
+  return db.transaction(async tx => {
+    await tx.insert(studyDailyUsage).values({
+      userId, day, verticalizations: 0, questionGenerations: 0,
+    }).onDuplicateKeyUpdate({ set: { day } });
+    const rows = await tx.select({ verticalizations: studyDailyUsage.verticalizations })
+      .from(studyDailyUsage)
+      .where(and(eq(studyDailyUsage.userId, userId), eq(studyDailyUsage.day, day)))
+      .limit(1)
+      .for("update");
+    const used = rows[0]?.verticalizations ?? 0;
+    if (!canVerticalize(used)) return { allowed: false, used };
+    await tx.update(studyDailyUsage).set({ verticalizations: used + 1 })
+      .where(and(eq(studyDailyUsage.userId, userId), eq(studyDailyUsage.day, day)));
+    return { allowed: true, used: used + 1 };
+  });
+}
+
+async function releaseVerticalization(userId: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  const day = getSaoPauloDayKey();
+  await db.transaction(async tx => {
+    const rows = await tx.select({ verticalizations: studyDailyUsage.verticalizations })
+      .from(studyDailyUsage)
+      .where(and(eq(studyDailyUsage.userId, userId), eq(studyDailyUsage.day, day)))
+      .limit(1)
+      .for("update");
+    const used = rows[0]?.verticalizations ?? 0;
+    if (used > 0) {
+      await tx.update(studyDailyUsage).set({ verticalizations: used - 1 })
+        .where(and(eq(studyDailyUsage.userId, userId), eq(studyDailyUsage.day, day)));
+    }
+  });
+}
+
 async function saveVerticalizedDocument(input: {
   userId: number;
   name: string;
@@ -44,33 +83,40 @@ async function saveVerticalizedDocument(input: {
   sizeBytes: number;
   fileBuffer?: Buffer;
 }): Promise<Syllabus & { documentId: number; source: "text" | "pdf" }> {
-  const syllabus = await verticalizeSyllabus({
-    text: input.text,
-    concurso: input.concurso,
-    cargo: input.cargo,
-  });
-  const db = await getDb();
-  if (!db) throw new Error("DATABASE_UNAVAILABLE");
-  if (input.source === "pdf" && !input.fileBuffer?.length) throw new Error("PDF_FILE_MISSING");
-  let storedFile: { key: string; url: string } | null = null;
-  if (input.source === "pdf") {
-    try {
-      storedFile = await storagePut(`ultra-study-documents/${input.userId}/${randomUUID()}.pdf`, input.fileBuffer!, "application/pdf");
-    } catch {
-      throw new Error("STORAGE_UNAVAILABLE");
+  const reservation = await reserveVerticalization(input.userId);
+  if (!reservation.allowed) throw new Error("VERTICALIZATION_LIMIT");
+  try {
+    const syllabus = await verticalizeSyllabus({
+      text: input.text,
+      concurso: input.concurso,
+      cargo: input.cargo,
+    });
+    const db = await getDb();
+    if (!db) throw new Error("DATABASE_UNAVAILABLE");
+    if (input.source === "pdf" && !input.fileBuffer?.length) throw new Error("PDF_FILE_MISSING");
+    let storedFile: { key: string; url: string } | null = null;
+    if (input.source === "pdf") {
+      try {
+        storedFile = await storagePut(`ultra-study-documents/${input.userId}/${randomUUID()}.pdf`, input.fileBuffer!, "application/pdf");
+      } catch {
+        throw new Error("STORAGE_UNAVAILABLE");
+      }
     }
+    const inserted = await db.insert(studyDocuments).values({
+      userId: input.userId,
+      name: input.name,
+      source: input.source,
+      rawText: input.text,
+      storageKey: storedFile?.key ?? null,
+      sizeBytes: input.sizeBytes,
+    }).$returningId();
+    const documentId = inserted[0]?.id;
+    if (!documentId) throw new Error("DOCUMENT_SAVE_FAILED");
+    return { ...syllabus, documentId, source: input.source };
+  } catch (error) {
+    await releaseVerticalization(input.userId).catch(() => {});
+    throw error;
   }
-  const inserted = await db.insert(studyDocuments).values({
-    userId: input.userId,
-    name: input.name,
-    source: input.source,
-    rawText: input.text,
-    storageKey: storedFile?.key ?? null,
-    sizeBytes: input.sizeBytes,
-  }).$returningId();
-  const documentId = inserted[0]?.id;
-  if (!documentId) throw new Error("DOCUMENT_SAVE_FAILED");
-  return { ...syllabus, documentId, source: input.source };
 }
 
 const preferencesSchema = z.object({
@@ -239,6 +285,14 @@ function promptHash(prompt: string): string {
 }
 
 function sendStudyError(res: Response, error: unknown) {
+  if (error instanceof Error && error.message === "VERTICALIZATION_LIMIT") {
+    res.status(429).json({
+      error: `Você atingiu o limite diário de ${FREE_DAILY_VERTICALIZATION_LIMIT} verticalizações de edital. Tente novamente amanhã.`,
+      code: "DAILY_VERTICALIZATION_LIMIT",
+      usage: { limit: FREE_DAILY_VERTICALIZATION_LIMIT },
+    });
+    return;
+  }
   if (error instanceof Error && error.message === "STORAGE_UNAVAILABLE") {
     res.status(503).json({ error: "O armazenamento privado de PDFs está indisponível. Tente novamente mais tarde.", code: "STORAGE_UNAVAILABLE" });
     return;
